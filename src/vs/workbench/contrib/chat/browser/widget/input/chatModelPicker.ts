@@ -31,6 +31,7 @@ import { IOpenerService } from '../../../../../../platform/opener/common/opener.
 import { IProductService } from '../../../../../../platform/product/common/productService.js';
 import { ITelemetryService } from '../../../../../../platform/telemetry/common/telemetry.js';
 import { TelemetryTrustedValue } from '../../../../../../platform/telemetry/common/telemetryUtils.js';
+import { ChatCacheBreakDimension } from '../../../common/chatCacheBreakService.js';
 import { MANAGE_CHAT_COMMAND_ID } from '../../../common/constants.js';
 import { IModelControlEntry, ILanguageModelChatMetadataAndIdentifier, ILanguageModelsService, IModelsControlManifest } from '../../../common/languageModels.js';
 import { ChatEntitlement, chatRequiresSetup, IChatEntitlementService, isProUser } from '../../../../../services/chat/common/chatEntitlementService.js';
@@ -1387,7 +1388,13 @@ export class ModelPickerWidget extends Disposable {
 			}
 		}
 
+		// Surface a cache-break cost hint only when the selected model differs from
+		// the one the session's last request used — i.e. switching now would reset
+		// the warm prompt cache. Stays hidden when nothing has changed.
+		const breaksCache = this._delegate.selectionBreaksCache?.(ChatCacheBreakDimension.Model) ?? false;
 		const listOptions = {
+			headerText: breaksCache ? localize('chat.modelPicker.cacheBreakHint', "Switching models mid-session resets the prompt cache and may increase cost.") : undefined,
+			headerIcon: breaksCache ? Codicon.info : undefined,
 			// Always show the filter to allow for the secondary heading to show
 			showFilter: true,
 			filterPlaceholder: localize('chat.modelPicker.search', "Search models"),
@@ -1745,7 +1752,9 @@ export class ModelPickerWidget extends Disposable {
 				getWidgetRole: () => 'menu' as const,
 			},
 			{
-				headerText: localize('chat.config.costHint', "Non-default options may increase cost"),
+				headerText: this._delegate.selectionBreaksCache?.(ChatCacheBreakDimension.Options)
+					? localize('chat.config.cacheBreakHint', "Changing these options mid-session resets the prompt cache and may increase cost.")
+					: localize('chat.config.costHint', "Non-default options may increase cost"),
 				headerIcon: Codicon.info,
 			}
 		);

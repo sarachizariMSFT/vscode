@@ -17,6 +17,7 @@ import { localize } from '../../../../../../nls.js';
 import { IContextKeyService } from '../../../../../../platform/contextkey/common/contextkey.js';
 import { IInstantiationService } from '../../../../../../platform/instantiation/common/instantiation.js';
 import { IKeybindingService } from '../../../../../../platform/keybinding/common/keybinding.js';
+import { ChatCacheBreakDimension } from '../../../common/chatCacheBreakService.js';
 import { ILanguageModelChatMetadataAndIdentifier } from '../../../common/languageModels.js';
 import { IChatInputPickerOptions } from './chatInputPickerActionItem.js';
 import { ModelPickerWidget } from './chatModelPicker.js';
@@ -55,6 +56,14 @@ export interface IModelPickerDelegate {
 	 * Student users) instead of an Auto entry.
 	 */
 	showAutoModel?(): boolean;
+	/**
+	 * Whether changing the current selection to what is shown in the picker would
+	 * break the session's warm prompt cache — i.e. the selection differs from the
+	 * session's last request in the given dimension. The picker uses this to
+	 * surface a cache-break cost hint only when a real change is pending (not just
+	 * because a session exists). Defaults to `false` when omitted.
+	 */
+	selectionBreaksCache?(dimension: ChatCacheBreakDimension): boolean;
 	/**
 	 * Per-editor model configuration access. When omitted, the picker reads and
 	 * writes configuration through the global {@link ILanguageModelsService}.

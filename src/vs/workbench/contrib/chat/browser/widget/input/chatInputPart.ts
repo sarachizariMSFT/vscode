@@ -134,6 +134,7 @@ import { IChatInputPickerOptions } from './chatInputPickerActionItem.js';
 import { ChatSelectedTools } from './chatSelectedTools.js';
 import { DelegationSessionPickerActionItem } from './delegationSessionPickerActionItem.js';
 import { ModelPickerActionItem, IModelPickerDelegate } from './modelPickerActionItem.js';
+import { ChatCacheBreakDimension, IChatCacheBreakService } from '../../../common/chatCacheBreakService.js';
 import { IModePickerDelegate, ModePickerActionItem } from './modePickerActionItem.js';
 import { IPermissionPickerDelegate, PermissionPickerActionItem } from './permissionPickerActionItem.js';
 import { SessionTypePickerActionItem } from './sessionTargetPickerActionItem.js';
@@ -613,6 +614,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		@IChatAttachmentWidgetRegistry private readonly _chatAttachmentWidgetRegistry: IChatAttachmentWidgetRegistry,
 		@IChatInputNotificationService private readonly chatInputNotificationService: IChatInputNotificationService,
 		@IChatPhoneInputPresenter private readonly chatPhoneInputPresenter: IChatPhoneInputPresenter,
+		@IChatCacheBreakService private readonly _chatCacheBreakService: IChatCacheBreakService,
 	) {
 		super();
 
@@ -1094,6 +1096,19 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 				this.renderAttachedContext();
 			},
 			getModels: () => this.getModels(),
+			selectionBreaksCache: (dimension: ChatCacheBreakDimension) => {
+				const sessionResource = this._widget?.viewModel?.model.sessionResource;
+				const model = this._currentLanguageModel.get();
+				if (!sessionResource || !model) {
+					return false;
+				}
+				const config = this._modelConfigStore.getModelConfiguration(model.identifier);
+				return this._chatCacheBreakService.wouldBreakCache(sessionResource, {
+					model: model.identifier,
+					reasoningEffort: typeof config?.reasoningEffort === 'string' ? config.reasoningEffort : undefined,
+					contextSize: typeof config?.contextSize === 'number' ? config.contextSize : undefined,
+				}, dimension);
+			},
 			useGroupedModelPicker: () => {
 				// Agent-host session types (local and remote) reuse the same
 				// grouped/featured model picker as the default chat session, so

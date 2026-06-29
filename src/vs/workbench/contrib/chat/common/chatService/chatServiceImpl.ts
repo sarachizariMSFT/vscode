@@ -52,6 +52,7 @@ import { ChatRequestVariableSet, IChatRequestVariableEntry, isExplicitFileOrImag
 import { IDynamicVariable } from '../attachments/chatVariables.js';
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind } from '../constants.js';
 import { ChatMessageRole, IChatMessage, ILanguageModelsService } from '../languageModels.js';
+import { IChatCacheBreakService, toCacheBreakToolsKey } from '../chatCacheBreakService.js';
 import { ILanguageModelToolsService, ToolAndToolSetEnablementMap } from '../tools/languageModelToolsService.js';
 import { ChatSessionOperationLog } from '../model/chatSessionOperationLog.js';
 import { IPromptsService } from '../promptSyntax/service/promptsService.js';
@@ -207,6 +208,7 @@ export class ChatService extends Disposable implements IChatService {
 		@IChatEntitlementService private readonly chatEntitlementService: IChatEntitlementService,
 		@ILanguageModelsService private readonly languageModelsService: ILanguageModelsService,
 		@IChatDebugService private readonly chatDebugService: IChatDebugService,
+		@IChatCacheBreakService private readonly chatCacheBreakService: IChatCacheBreakService,
 	) {
 		super();
 
@@ -1395,6 +1397,21 @@ export class ChatService extends Disposable implements IChatService {
 					request = model.addRequest(parsedRequest, initVariableData, attempt, options?.modeInfo, initialAgent, initialCommand, options?.confirmation, options?.locationData, options?.attachedContext, undefined, options?.userSelectedModelId, options?.userSelectedTools?.get(), undefined, options?.isSystemInitiated, options?.systemInitiatedLabel, options?.terminalExecutionId);
 					const thisRequest = request;
 					completeResponseCreated();
+
+					// Record the cache-relevant config this turn used so surfaces (e.g. the
+					// model picker) can warn when changing it later would reset the prompt
+					// cache. Skip system-initiated (background) turns so they do not clobber
+					// the user's last selection baseline.
+					if (!options?.isSystemInitiated) {
+						const recordedModelConfig = options?.userSelectedModelConfiguration ?? (options?.userSelectedModelId ? this.languageModelsService.getModelConfiguration(options.userSelectedModelId) : undefined);
+						this.chatCacheBreakService.recordRequest(sessionResource, {
+							model: options?.userSelectedModelId,
+							reasoningEffort: typeof recordedModelConfig?.reasoningEffort === 'string' ? recordedModelConfig.reasoningEffort : undefined,
+							contextSize: typeof recordedModelConfig?.contextSize === 'number' ? recordedModelConfig.contextSize : undefined,
+							mode: options?.modeInfo?.modeInstructions?.name ?? options?.modeInfo?.telemetryModeName ?? options?.modeInfo?.telemetryModeId,
+							tools: toCacheBreakToolsKey(options?.userSelectedTools?.get()),
+						});
+					}
 
 					// --- Step 2: Collect hooks + instructions in parallel (after UI is shown) ---
 					const [hooksResult, instructionEntries] = await Promise.all([
