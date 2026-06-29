@@ -436,3 +436,273 @@
 .action-widget .monaco-list-row.action.sessions-browse-inline-item.focused:not(.option-disabled) .description {
 	visibility: visible;
 }
+
+/* --- Embedded guardrails: scripted demo session ----------------------------
+ * A self-contained "working session" overlay launched via the command
+ * "Guardrails: Start Demo Session". It replays a user prompt, the agent
+ * working, and a guardrail popup animating in directly above the chat box. */
+.guardrail-demo-session {
+	position: absolute;
+	inset: 0;
+	z-index: 20;
+	display: flex;
+	flex-direction: column;
+	background: var(--vscode-editor-background);
+	overflow: hidden;
+}
+
+.guardrail-demo-session.hidden {
+	display: none;
+}
+
+.guardrail-demo-header {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 10px 16px;
+	border-bottom: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border));
+}
+
+.guardrail-demo-header-left {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-width: 0;
+}
+
+.guardrail-demo-header-title {
+	font-weight: 600;
+	font-size: 13px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.guardrail-demo-status {
+	font-size: 11px;
+	padding: 1px 8px;
+	border-radius: 10px;
+	color: var(--vscode-descriptionForeground);
+	border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border));
+}
+
+.guardrail-demo-status.working {
+	color: var(--vscode-charts-blue, var(--vscode-textLink-foreground));
+	border-color: var(--vscode-focusBorder);
+}
+
+.guardrail-demo-close {
+	flex: 0 0 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: none;
+	border-radius: 4px;
+	background: transparent;
+	color: var(--vscode-foreground);
+	cursor: pointer;
+}
+
+.guardrail-demo-close:hover {
+	background: var(--vscode-toolbar-hoverBackground);
+}
+
+.guardrail-demo-thread {
+	flex: 1 1 auto;
+	overflow-y: auto;
+	padding: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+.guardrail-demo-msg {
+	display: flex;
+	flex-direction: column;
+	max-width: 760px;
+	width: 100%;
+	align-self: center;
+	animation: guardrail-demo-fade-in 0.25s ease both;
+}
+
+.guardrail-demo-msg-body {
+	min-width: 0;
+	font-size: 13px;
+	line-height: 1.5;
+	color: var(--vscode-foreground);
+}
+
+/* The developer's request reads as a distinct block (no avatar icons), the way native chat distinguishes a request from the agent's response. */
+.guardrail-demo-msg.user .guardrail-demo-msg-body {
+	padding: 8px 12px;
+	border-radius: 6px;
+	background: var(--vscode-input-background);
+	border: 1px solid var(--vscode-input-border, var(--vscode-editorWidget-border));
+}
+
+.guardrail-demo-line {
+	margin-top: 6px;
+	font-family: var(--monaco-monospace-font);
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.guardrail-demo-line.pending {
+	color: var(--vscode-foreground);
+}
+
+.guardrail-demo-line.blocked {
+	color: var(--vscode-editorWarning-foreground);
+}
+
+.guardrail-demo-composer {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	max-width: 760px;
+	align-self: center;
+	padding: 0 16px 16px 16px;
+	box-sizing: border-box;
+}
+
+.guardrail-demo-input {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 12px 12px 8px 12px;
+	border: 1px solid var(--vscode-focusBorder, var(--vscode-input-border));
+	border-radius: 8px;
+	background: var(--vscode-input-background);
+}
+
+.guardrail-demo-input-placeholder {
+	flex: 1 1 auto;
+	color: var(--vscode-input-placeholderForeground);
+	font-size: 13px;
+	line-height: 18px;
+	min-height: 36px;
+}
+
+.guardrail-demo-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+}
+
+.guardrail-demo-toolbar-left {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	color: var(--vscode-descriptionForeground);
+	font-size: 12px;
+	min-width: 0;
+}
+
+.guardrail-demo-toolbar-icon {
+	display: flex;
+	color: var(--vscode-icon-foreground);
+}
+
+.guardrail-demo-toolbar-pill {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	color: var(--vscode-foreground);
+}
+
+.guardrail-demo-toolbar-pill-icon {
+	display: flex;
+	font-size: 13px;
+}
+
+.guardrail-demo-toolbar-sep {
+	width: 1px;
+	height: 14px;
+	background: var(--vscode-input-border, var(--vscode-editorWidget-border));
+}
+
+.guardrail-demo-toolbar-model {
+	color: var(--vscode-foreground);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.guardrail-demo-toolbar-effort {
+	color: var(--vscode-descriptionForeground);
+	white-space: nowrap;
+}
+
+.guardrail-demo-send {
+	flex: 0 0 auto;
+	color: var(--vscode-icon-foreground);
+	display: flex;
+	font-size: 16px;
+}
+
+@keyframes guardrail-demo-fade-in {
+	from { opacity: 0; transform: translateY(6px); }
+	to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- The guardrail popup, docked directly above the demo chat box ----------*/
+.guardrail-demo-composer .guardrail-notification-bar {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	box-sizing: border-box;
+	margin: 0 0 10px 0;
+	padding: 9px 12px;
+	border: 1px solid var(--vscode-inputValidation-warningBorder, var(--vscode-editorWarning-foreground));
+	border-radius: 6px;
+	background: var(--vscode-inputValidation-warningBackground, rgba(255, 196, 0, 0.1));
+	color: var(--vscode-foreground);
+	font-size: 12px;
+	text-align: left;
+	cursor: pointer;
+	outline: none;
+	animation: guardrail-demo-pop-in 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.guardrail-demo-composer .guardrail-notification-bar.hidden {
+	display: none;
+}
+
+.guardrail-demo-composer .guardrail-notification-bar:hover {
+	background: var(--vscode-inputValidation-warningBackground, rgba(255, 196, 0, 0.18));
+	border-color: var(--vscode-focusBorder);
+}
+
+.guardrail-demo-composer .guardrail-notification-bar:focus-visible {
+	border-color: var(--vscode-focusBorder);
+	box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+}
+
+.guardrail-demo-composer .guardrail-notification-text {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: 600;
+}
+
+.guardrail-demo-composer .guardrail-notification-action {
+	flex: 0 0 auto;
+	color: var(--vscode-textLink-foreground);
+	font-weight: 600;
+}
+
+@keyframes guardrail-demo-pop-in {
+	from { opacity: 0; transform: translateY(10px) scale(0.98); }
+	to { opacity: 1; transform: translateY(0) scale(1); }
+}
+

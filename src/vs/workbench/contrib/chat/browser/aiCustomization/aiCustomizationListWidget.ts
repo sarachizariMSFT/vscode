@@ -23,6 +23,7 @@ import { PromptsType } from '../../common/promptSyntax/promptTypes.js';
 import { agentIcon, instructionsIcon, promptIcon, skillIcon, hookIcon, userIcon, workspaceIcon, extensionIcon, pluginIcon, builtinIcon } from './aiCustomizationIcons.js';
 import { AI_CUSTOMIZATION_ITEM_STORAGE_KEY, AI_CUSTOMIZATION_ITEM_TYPE_KEY, AI_CUSTOMIZATION_ITEM_URI_KEY, AI_CUSTOMIZATION_ITEM_PLUGIN_URI_KEY, AICustomizationManagementItemMenuId, AICustomizationManagementCreateMenuId, AICustomizationManagementSection, BUILTIN_STORAGE, AI_CUSTOMIZATION_ITEM_DISABLED_KEY, sectionToPromptType } from './aiCustomizationManagement.js';
 import { IAgentPluginService } from '../../common/plugins/agentPluginService.js';
+import { guardrailNotificationStore } from './guardrailNotificationStore.js';
 import { InputBox } from '../../../../../base/browser/ui/inputbox/inputBox.js';
 import { defaultButtonStyles, defaultInputBoxStyles } from '../../../../../platform/theme/browser/defaultStyles.js';
 import { Delayer } from '../../../../../base/common/async.js';
@@ -72,6 +73,32 @@ type CustomizationEditorSearchClassification = {
 const ITEM_HEIGHT = 44;
 const GROUP_HEADER_HEIGHT = 36;
 const GROUP_HEADER_HEIGHT_WITH_SEPARATOR = 40;
+
+/** A capability primitive constrained by the agent manifest + workspace policy. */
+type GuardrailCapability = 'file_system' | 'terminal' | 'network';
+
+/** Which scenario the model is operating under in the simulator. */
+type GuardrailScenario = 'normal' | 'jailbreak';
+
+/** A simulated agent action the user can trigger. */
+interface IGuardrailAction {
+	readonly id: string;
+	readonly label: string;
+	readonly subtitle: string;
+	readonly capability: GuardrailCapability;
+	/** Effective capability values that would permit this action. */
+	readonly permittedBy: readonly string[];
+}
+
+/** Result of evaluating an action through both enforcement layers. */
+interface IGuardrailEvaluation {
+	readonly action: IGuardrailAction;
+	readonly allowed: boolean;
+	/** LLM (policy injection) layer outcome. */
+	readonly llm: { readonly state: 'proceed' | 'attempt' | 'refused'; readonly text: string };
+	/** Structural (tool gate) layer outcome. */
+	readonly gate: { readonly state: 'pass' | 'block' | 'skip'; readonly text: string };
+}
 
 /**
  * Represents a collapsible group header in the list.
@@ -583,6 +610,19 @@ export class AICustomizationListWidget extends Disposable {
 	private addButton!: ButtonWithDropdown;
 	private addButtonSimple!: Button;
 	private listContainer!: HTMLElement;
+	private guardrailPrototypeContainer!: HTMLElement;
+	private guardrailScenario: GuardrailScenario = 'normal';
+	private guardrailScenarioDesc!: HTMLElement;
+	private guardrailSegNormal!: HTMLElement;
+	private guardrailSegJailbreak!: HTMLElement;
+	private guardrailStatRan!: HTMLElement;
+	private guardrailStatAllowed!: HTMLElement;
+	private guardrailStatBlocked!: HTMLElement;
+	private guardrailResultBanner!: HTMLElement;
+	private guardrailResultTag!: HTMLElement;
+	private guardrailResultText!: HTMLElement;
+	private guardrailLog!: HTMLElement;
+	private guardrailLogEmpty?: HTMLElement;
 	private list!: WorkbenchList<IListEntry>;
 	private emptyStateContainer!: HTMLElement;
 	private emptyStateIcon!: HTMLElement;
@@ -607,6 +647,7 @@ export class AICustomizationListWidget extends Disposable {
 
 	/** Subscription to the items model for the current section; refreshed on setSection. */
 	private readonly currentSectionSubscription = this._register(new MutableDisposable());
+	private guardrailStats = { ran: 0, allowed: 0, blocked: 0 };
 
 	private readonly _onDidSelectItem = this._register(new Emitter<IAICustomizationListItem>());
 	readonly onDidSelectItem: Event<IAICustomizationListItem> = this._onDidSelectItem.event;
@@ -697,6 +738,8 @@ export class AICustomizationListWidget extends Disposable {
 			targetWindow,
 		));
 		this._register(headerObserver.observe(this.sectionTitleHeader));
+
+		this.createGuardrailPrototypePanel();
 
 		// Search and button container
 		this.searchAndButtonContainer = DOM.append(this.element, $('.list-search-and-button-container'));
@@ -837,6 +880,252 @@ export class AICustomizationListWidget extends Disposable {
 		}));
 
 		this.updateSectionHeader();
+		this.updateGuardrailPrototypeVisibility();
+	}
+
+	/**
+	 * The set of simulated agent actions. Each declares the capability it exercises
+	 * and the effective capability values that would permit it.
+	 */
+	private static readonly GUARDRAIL_ACTIONS: readonly IGuardrailAction[] = [
+		{ id: 'read', label: localize('guardrailActionReadLabel', "Read file"), subtitle: localize('guardrailActionReadSub', "read src/auth.ts"), capability: 'file_system', permittedBy: ['read-only', 'read-write', 'full'] },
+		{ id: 'write', label: localize('guardrailActionWriteLabel', "Write file"), subtitle: localize('guardrailActionWriteSub', "modify src/auth.ts"), capability: 'file_system', permittedBy: ['read-write', 'full'] },
+		{ id: 'terminal', label: localize('guardrailActionTerminalLabel', "Run command"), subtitle: localize('guardrailActionTerminalSub', "npm install pkg"), capability: 'terminal', permittedBy: ['safe-commands', 'full'] },
+		{ id: 'network', label: localize('guardrailActionNetworkLabel', "Network call"), subtitle: localize('guardrailActionNetworkSub', "POST to api.io"), capability: 'network', permittedBy: ['localhost-only', 'workspace-only', 'full'] },
+	];
+
+	/** Workspace default policy (the floor). */
+	private static readonly GUARDRAIL_WORKSPACE_POLICY: Record<GuardrailCapability, string> = {
+		file_system: 'read-only',
+		terminal: 'disallowed',
+		network: 'disallowed',
+	};
+
+	/** Per-agent manifest capabilities (the ceiling). 'none' normalizes to 'disallowed'. */
+	private static readonly GUARDRAIL_AGENT_MANIFEST: Record<GuardrailCapability, string> = {
+		file_system: 'read-only',
+		terminal: 'disallowed',
+		network: 'none',
+	};
+
+	/** Restrictiveness ranking used to pick the more restrictive of workspace vs agent. */
+	private static readonly GUARDRAIL_RANK: Record<string, number> = {
+		'disallowed': 0, 'none': 0,
+		'read-only': 1, 'localhost-only': 1, 'safe-commands': 1,
+		'workspace-only': 2, 'read-write': 2,
+		'full': 3,
+	};
+
+	private createGuardrailPrototypePanel(): void {
+		this.guardrailPrototypeContainer = DOM.append(this.element, $('.guardrail-prototype-panel'));
+
+		// --- Simulator section ---
+		const simSection = DOM.append(this.guardrailPrototypeContainer, $('.guardrail-section'));
+		DOM.append(simSection, $('.guardrail-section-title')).textContent = localize('guardrailSimTitle', "Agent action simulator");
+		this.guardrailScenarioDesc = DOM.append(simSection, $('.guardrail-scenario-desc'));
+
+		const toggleRow = DOM.append(simSection, $('.guardrail-scenario-toggle'));
+		this.guardrailSegNormal = DOM.append(toggleRow, $('.guardrail-seg-btn'));
+		this.guardrailSegNormal.textContent = localize('guardrailScenarioNormal', "Model follows policy");
+		this.guardrailSegNormal.setAttribute('role', 'button');
+		this.guardrailSegNormal.tabIndex = 0;
+		this.guardrailSegJailbreak = DOM.append(toggleRow, $('.guardrail-seg-btn'));
+		this.guardrailSegJailbreak.textContent = localize('guardrailScenarioJailbreak', "Model is jailbroken");
+		this.guardrailSegJailbreak.setAttribute('role', 'button');
+		this.guardrailSegJailbreak.tabIndex = 0;
+		this._register(DOM.addDisposableListener(this.guardrailSegNormal, DOM.EventType.CLICK, () => this.setGuardrailScenario('normal')));
+		this._register(DOM.addDisposableListener(this.guardrailSegJailbreak, DOM.EventType.CLICK, () => this.setGuardrailScenario('jailbreak')));
+
+		const actionGrid = DOM.append(simSection, $('.guardrail-action-grid'));
+		for (const action of AICustomizationListWidget.GUARDRAIL_ACTIONS) {
+			const btn = DOM.append(actionGrid, $('button.guardrail-action-btn'));
+			DOM.append(btn, $('.guardrail-action-label')).textContent = action.label;
+			DOM.append(btn, $('.guardrail-action-sub')).textContent = action.subtitle;
+			this._register(DOM.addDisposableListener(btn, DOM.EventType.CLICK, () => this.runGuardrailAction(action)));
+		}
+
+		// --- Status section ---
+		const statusSection = DOM.append(this.guardrailPrototypeContainer, $('.guardrail-section'));
+		DOM.append(statusSection, $('.guardrail-section-title')).textContent = localize('guardrailStatusTitle', "Guardrail status");
+
+		const summary = DOM.append(statusSection, $('.guardrail-status-summary'));
+		this.guardrailStatRan = this.createGuardrailStat(summary, localize('guardrailStatRan', "Checks ran"), '');
+		this.guardrailStatAllowed = this.createGuardrailStat(summary, localize('guardrailStatAllowed', "Allowed"), 'state-passed');
+		this.guardrailStatBlocked = this.createGuardrailStat(summary, localize('guardrailStatBlocked', "Blocked"), 'state-blocked');
+
+		this.guardrailResultBanner = DOM.append(statusSection, $('.guardrail-result-banner'));
+		this.guardrailResultTag = DOM.append(this.guardrailResultBanner, $('.guardrail-result-tag'));
+		this.guardrailResultText = DOM.append(this.guardrailResultBanner, $('.guardrail-result-text'));
+
+		this.guardrailLog = DOM.append(statusSection, $('.guardrail-log'));
+
+		this.setGuardrailScenario('normal');
+		this.resetGuardrailStatus();
+	}
+
+	private createGuardrailStat(parent: HTMLElement, label: string, valueClass: string): HTMLElement {
+		const stat = DOM.append(parent, $('.guardrail-stat'));
+		const num = DOM.append(stat, $('.guardrail-stat-num'));
+		if (valueClass) {
+			num.classList.add(valueClass);
+		}
+		num.textContent = '0';
+		DOM.append(stat, $('.guardrail-stat-label')).textContent = label;
+		return num;
+	}
+
+	/** Most restrictive of workspace policy and agent manifest for a capability. */
+	private guardrailEffectiveCapability(capability: GuardrailCapability): string {
+		const ws = AICustomizationListWidget.GUARDRAIL_WORKSPACE_POLICY[capability];
+		const agentRaw = AICustomizationListWidget.GUARDRAIL_AGENT_MANIFEST[capability];
+		const agent = agentRaw === 'none' ? 'disallowed' : agentRaw;
+		const rank = AICustomizationListWidget.GUARDRAIL_RANK;
+		return (rank[ws] <= rank[agent]) ? ws : agent;
+	}
+
+	/** The two-layer enforcement engine: LLM policy layer then structural tool gate. */
+	private evaluateGuardrailAction(action: IGuardrailAction): IGuardrailEvaluation {
+		const effective = this.guardrailEffectiveCapability(action.capability);
+		const structurallyAllowed = action.permittedBy.includes(effective);
+
+		// Layer 1 — LLM policy layer.
+		let llm: IGuardrailEvaluation['llm'];
+		let attempted: boolean;
+		if (this.guardrailScenario === 'jailbreak') {
+			attempted = true;
+			llm = structurallyAllowed
+				? { state: 'proceed', text: localize('guardrailLlmProceed', "Model proceeds (action is within policy).") }
+				: { state: 'attempt', text: localize('guardrailLlmAttempt', "Model ignores its policy text and attempts the action anyway (jailbroken).") };
+		} else {
+			attempted = structurallyAllowed;
+			llm = structurallyAllowed
+				? { state: 'proceed', text: localize('guardrailLlmProceed', "Model proceeds (action is within policy).") }
+				: { state: 'refused', text: localize('guardrailLlmRefuse', "Model reads injected policy, refuses, and suggests an alternative instead.") };
+		}
+
+		// Layer 2 — structural tool gate (only runs if a call was attempted).
+		let gate: IGuardrailEvaluation['gate'];
+		if (!attempted) {
+			gate = { state: 'skip', text: localize('guardrailGateSkip', "No tool call reached the runtime — model self-blocked at the policy layer.") };
+		} else if (structurallyAllowed) {
+			gate = { state: 'pass', text: localize('guardrailGatePass', "Tool gate: {0} = \"{1}\" permits this. Allowed.", action.capability, effective) };
+		} else {
+			gate = { state: 'block', text: localize('guardrailGateBlock', "Tool gate: {0} = \"{1}\" forbids this. Call intercepted and blocked.", action.capability, effective) };
+		}
+
+		return { action, allowed: structurallyAllowed, llm, gate };
+	}
+
+	private runGuardrailAction(action: IGuardrailAction): void {
+		const result = this.evaluateGuardrailAction(action);
+		this.guardrailStats.ran++;
+		if (result.allowed) {
+			this.guardrailStats.allowed++;
+		} else {
+			this.guardrailStats.blocked++;
+		}
+		this.guardrailStatRan.textContent = String(this.guardrailStats.ran);
+		this.guardrailStatAllowed.textContent = String(this.guardrailStats.allowed);
+		this.guardrailStatBlocked.textContent = String(this.guardrailStats.blocked);
+		this.renderGuardrailResult(result);
+		this.prependGuardrailLogEntry(result);
+		if (!result.allowed) {
+			// Surface this block to the session-wide notification bar near the chat.
+			const caughtBy = this.guardrailScenario === 'jailbreak'
+				? localize('guardrailIssueLiveGate', "Structural tool gate intercepted the call after the model was jailbroken.")
+				: localize('guardrailIssueLivePolicy', "Model refused at the policy layer before any tool call ran.");
+			guardrailNotificationStore.add({
+				id: `live-${action.id}-${Date.now()}`,
+				title: localize('guardrailIssueLiveTitle', "{0} blocked", action.label),
+				detail: caughtBy,
+				scenario: this.guardrailScenario === 'jailbreak' ? 'jailbroken' : 'policy',
+				timestamp: Date.now(),
+			});
+		}
+		if (this.lastLayoutHeight > 0 && this.lastLayoutWidth > 0) {
+			this.layout(this.lastLayoutHeight, this.lastLayoutWidth);
+		}
+	}
+
+	private renderGuardrailResult(result: IGuardrailEvaluation): void {
+		this.guardrailResultBanner.classList.remove('neutral', 'ok', 'blocked');
+		this.guardrailResultBanner.classList.add(result.allowed ? 'ok' : 'blocked');
+		this.guardrailResultTag.textContent = result.allowed
+			? localize('guardrailResultAllowed', "Allowed")
+			: localize('guardrailResultBlocked', "Blocked");
+		if (result.allowed) {
+			this.guardrailResultText.textContent = localize('guardrailResultAllowedText', "{0} — permitted by guardrails.", result.action.label);
+		} else {
+			const caughtBy = this.guardrailScenario === 'jailbreak'
+				? localize('guardrailCaughtGate', "model was jailbroken, structural layer caught it")
+				: localize('guardrailCaughtLlm', "model self-blocked at policy layer");
+			this.guardrailResultText.textContent = localize('guardrailResultBlockedText', "{0} — blocked ({1}).", result.action.label, caughtBy);
+		}
+	}
+
+	private prependGuardrailLogEntry(result: IGuardrailEvaluation): void {
+		this.guardrailLogEmpty?.remove();
+		this.guardrailLogEmpty = undefined;
+
+		const entry = $('.guardrail-log-entry');
+		entry.classList.add(result.allowed ? 'allowed' : 'blocked');
+		DOM.append(entry, $('.guardrail-log-action')).textContent = `${result.action.label} (${result.action.subtitle})`;
+		const layers = DOM.append(entry, $('.guardrail-log-layers'));
+
+		const llmPillState = result.llm.state === 'proceed' ? 'pass' : (result.llm.state === 'refused' ? 'skip' : 'fail');
+		const llmPillText = result.llm.state === 'proceed'
+			? localize('guardrailPillProceed', "LLM proceed")
+			: (result.llm.state === 'refused' ? localize('guardrailPillRefused', "LLM refused") : localize('guardrailPillAttempt', "LLM attempt"));
+		this.appendGuardrailLayer(layers, llmPillState, llmPillText, result.llm.text);
+
+		const gatePillState = result.gate.state === 'pass' ? 'pass' : (result.gate.state === 'skip' ? 'skip' : 'fail');
+		const gatePillText = result.gate.state === 'pass'
+			? localize('guardrailPillGatePass', "Gate pass")
+			: (result.gate.state === 'skip' ? localize('guardrailPillGateNa', "Gate n/a") : localize('guardrailPillGateBlock', "Gate block"));
+		this.appendGuardrailLayer(layers, gatePillState, gatePillText, result.gate.text);
+
+		this.guardrailLog.insertBefore(entry, this.guardrailLog.firstChild);
+	}
+
+	private appendGuardrailLayer(parent: HTMLElement, pillState: 'pass' | 'fail' | 'skip', pillText: string, text: string): void {
+		const layer = DOM.append(parent, $('.guardrail-log-layer'));
+		const pill = DOM.append(layer, $('.guardrail-pill'));
+		pill.classList.add(`pill-${pillState}`);
+		pill.textContent = pillText;
+		DOM.append(layer, $('.guardrail-log-layer-text')).textContent = text;
+	}
+
+	private setGuardrailScenario(scenario: GuardrailScenario): void {
+		this.guardrailScenario = scenario;
+		this.guardrailSegNormal.classList.toggle('active', scenario === 'normal');
+		this.guardrailSegJailbreak.classList.toggle('active', scenario === 'jailbreak');
+		this.guardrailScenarioDesc.textContent = scenario === 'normal'
+			? localize('guardrailDescNormal', "The model honors the policy text injected into its system prompt. It refuses disallowed actions on its own (fast path).")
+			: localize('guardrailDescJailbreak', "The model ignores its policy text and attempts disallowed actions. The structural tool gate is the safety net that still blocks them.");
+	}
+
+	private resetGuardrailStatus(): void {
+		this.guardrailStats = { ran: 0, allowed: 0, blocked: 0 };
+		this.guardrailStatRan.textContent = '0';
+		this.guardrailStatAllowed.textContent = '0';
+		this.guardrailStatBlocked.textContent = '0';
+		this.guardrailResultBanner.classList.remove('ok', 'blocked');
+		this.guardrailResultBanner.classList.add('neutral');
+		this.guardrailResultTag.textContent = localize('guardrailResultIdle', "Idle");
+		this.guardrailResultText.textContent = localize('guardrailResultIdleText', "No actions run yet");
+		DOM.clearNode(this.guardrailLog);
+		this.guardrailLogEmpty = DOM.append(this.guardrailLog, $('.guardrail-log-empty'));
+		this.guardrailLogEmpty.textContent = localize('guardrailLogEmpty', "Trigger an agent action to see two-layer enforcement.");
+	}
+
+	private updateGuardrailPrototypeVisibility(): void {
+		const visible = this.currentSection === AICustomizationManagementSection.Agents;
+		this.guardrailPrototypeContainer.style.display = visible ? '' : 'none';
+		if (visible) {
+			this.guardrailPrototypeContainer.removeAttribute('aria-hidden');
+		} else {
+			this.guardrailPrototypeContainer.setAttribute('aria-hidden', 'true');
+		}
 	}
 
 	/**
@@ -916,6 +1205,7 @@ export class AICustomizationListWidget extends Disposable {
 		const loadId = ++this._sectionLoadId;
 		this.currentSection = section;
 		this.updateSectionHeader();
+		this.updateGuardrailPrototypeVisibility();
 
 		const modelSection = toItemsModelSection(section);
 		if (!modelSection) {
@@ -1575,8 +1865,9 @@ export class AICustomizationListWidget extends Disposable {
 			return;
 		}
 		const headerHeight = this.sectionTitleHeader.offsetHeight;
+		const prototypeHeight = this.guardrailPrototypeContainer.style.display === 'none' ? 0 : this.guardrailPrototypeContainer.offsetHeight;
 		this.lastHeaderHeight = headerHeight;
-		const listHeight = Math.max(0, height - searchBarHeight - headerHeight);
+		const listHeight = Math.max(0, height - searchBarHeight - headerHeight - prototypeHeight);
 
 		this.listContainer.style.height = `${listHeight}px`;
 		this.list.layout(listHeight, width);

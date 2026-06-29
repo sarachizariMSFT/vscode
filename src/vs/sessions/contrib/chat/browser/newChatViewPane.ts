@@ -6,13 +6,18 @@
 import './media/chatWidget.css';
 import * as dom from '../../../../base/browser/dom.js';
 import { Disposable, DisposableStore, IDisposable, MutableDisposable } from '../../../../base/common/lifecycle.js';
-import { derived } from '../../../../base/common/observable.js';
+import { derived, autorun, observableFromEvent } from '../../../../base/common/observable.js';
 import { isWeb } from '../../../../base/common/platform.js';
 import { URI } from '../../../../base/common/uri.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
+import { ICommandService } from '../../../../platform/commands/common/commands.js';
+import { Codicon } from '../../../../base/common/codicons.js';
+import { ThemeIcon } from '../../../../base/common/themables.js';
+import { guardrailNotificationStore } from '../../../../workbench/contrib/chat/browser/aiCustomization/guardrailNotificationStore.js';
+import { AICustomizationManagementCommands, AICustomizationManagementSection } from '../../../../workbench/contrib/chat/browser/aiCustomization/aiCustomizationManagement.js';
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { IOpenerService } from '../../../../platform/opener/common/opener.js';
@@ -58,6 +63,7 @@ class NewChatWidget extends Disposable {
 		@IWorkspaceTrustRequestService private readonly workspaceTrustRequestService: IWorkspaceTrustRequestService,
 		@IAquariumService private readonly aquariumService: IAquariumService,
 		@IAgentHostFilterService private readonly agentHostFilterService: IAgentHostFilterService,
+		@ICommandService private readonly commandService: ICommandService,
 	) {
 		super();
 		// On web (vscode.dev / insiders.vscode.dev), use {@link WebWorkspacePicker}
@@ -134,6 +140,15 @@ class NewChatWidget extends Disposable {
 
 		this._newChatInput.render(chatWidgetContent, parent);
 
+		// Embedded guardrails — scripted demo session. Hidden until launched
+		// (command "Guardrails: Start Demo Session"). When active it overlays the
+		// new-chat surface with a realistic working session: the user's prompt,
+		// the agent working, and — the moment the agent attempts a risky action —
+		// a guardrail popup animating in right above the chat box, deep-linking
+		// into the Agents customization view. This keeps the homepage clean while
+		// demonstrating the in-session experience.
+		this._renderDemoSession(element);
+
 		// Create initial session for any workspace already selected at construct time.
 		// If the selection arrives later (provider registers asynchronously), the
 		// picker fires onDidSelectWorkspace and our listener handles it.
@@ -145,6 +160,223 @@ class NewChatWidget extends Disposable {
 		}
 
 		chatWidgetContainer.classList.add('revealed');
+	}
+
+	/**
+	 * Render the scripted guardrail demo session. Builds a hidden overlay over
+	 * the new-chat surface and shows it whenever {@link guardrailNotificationStore.demoActive}
+	 * flips on, replaying a working-session flow that ends in a blocked action.
+	 */
+	private _renderDemoSession(host: HTMLElement): void {
+		const overlay = dom.append(host, dom.$('.guardrail-demo-session.hidden'));
+
+		// Header: session identity + a status pill + a close affordance.
+		const header = dom.append(overlay, dom.$('.guardrail-demo-header'));
+		const headerLeft = dom.append(header, dom.$('.guardrail-demo-header-left'));
+		const headerTitle = dom.append(headerLeft, dom.$('span.guardrail-demo-header-title'));
+		headerTitle.textContent = localize('guardrailDemoTitle', "Agent session · auth-refactor");
+		const statusPill = dom.append(headerLeft, dom.$('span.guardrail-demo-status'));
+		const closeBtn = dom.append(header, dom.$('button.guardrail-demo-close'));
+		closeBtn.setAttribute('type', 'button');
+		closeBtn.setAttribute('aria-label', localize('guardrailDemoClose', "Exit demo session"));
+		closeBtn.classList.add(...ThemeIcon.asClassNameArray(Codicon.close));
+		this._register(dom.addDisposableListener(closeBtn, dom.EventType.CLICK, () => guardrailNotificationStore.stopDemo()));
+
+		// Conversation thread.
+		const thread = dom.append(overlay, dom.$('.guardrail-demo-thread'));
+
+		// Composer region: the guardrail popup docks directly above the input box.
+		const composer = dom.append(overlay, dom.$('.guardrail-demo-composer'));
+		this._renderGuardrailNotificationBar(composer);
+		const inputRow = dom.append(composer, dom.$('.guardrail-demo-input'));
+		const inputText = dom.append(inputRow, dom.$('span.guardrail-demo-input-placeholder'));
+		inputText.textContent = localize('guardrailDemoInput', "Run tasks in the background with the Copilot CLI, type ` # ` for adding context");
+
+		const toolbar = dom.append(inputRow, dom.$('.guardrail-demo-toolbar'));
+		const toolbarLeft = dom.append(toolbar, dom.$('.guardrail-demo-toolbar-left'));
+
+		const addBtn = dom.append(toolbarLeft, dom.$('span.guardrail-demo-toolbar-icon'));
+		addBtn.classList.add(...ThemeIcon.asClassNameArray(Codicon.add));
+
+		const modePill = dom.append(toolbarLeft, dom.$('span.guardrail-demo-toolbar-pill'));
+		const modeIcon = dom.append(modePill, dom.$('span.guardrail-demo-toolbar-pill-icon'));
+		modeIcon.classList.add(...ThemeIcon.asClassNameArray(Codicon.code));
+		dom.append(modePill, dom.$('span')).textContent = localize('guardrailDemoMode', "Agent");
+
+		dom.append(toolbarLeft, dom.$('span.guardrail-demo-toolbar-sep'));
+
+		dom.append(toolbarLeft, dom.$('span.guardrail-demo-toolbar-model')).textContent = localize('guardrailDemoModel', "Claude Opus 4.8");
+		dom.append(toolbarLeft, dom.$('span.guardrail-demo-toolbar-effort')).textContent = localize('guardrailDemoEffort', "Medium");
+
+		const sendBtn = dom.append(toolbar, dom.$('span.guardrail-demo-send'));
+		sendBtn.classList.add(...ThemeIcon.asClassNameArray(Codicon.stopCircle));
+
+		// React to demo activation. The nonce ensures re-running the command
+		// while already open restarts the script from the top.
+		const demoObs = observableFromEvent(
+			guardrailNotificationStore.onDidChangeDemo,
+			() => ({ active: guardrailNotificationStore.demoActive, nonce: guardrailNotificationStore.demoNonce })
+		);
+		const scriptStore = this._register(new DisposableStore());
+		this._register(autorun(reader => {
+			const { active } = demoObs.read(reader);
+			overlay.classList.toggle('hidden', !active);
+			scriptStore.clear();
+			if (active) {
+				this._runDemoScript(thread, statusPill, scriptStore);
+			}
+		}));
+	}
+
+	/**
+	 * Replay the scripted "agent working → guardrail blocks" sequence into the
+	 * demo thread. Timers are tracked in {@link store} so a restart/close cancels
+	 * any pending steps.
+	 */
+	private _runDemoScript(thread: HTMLElement, statusPill: HTMLElement, store: DisposableStore): void {
+		dom.clearNode(thread);
+		const timers: ReturnType<typeof setTimeout>[] = [];
+		store.add({ dispose: () => timers.forEach(t => clearTimeout(t)) });
+		const at = (ms: number, fn: () => void) => { timers.push(setTimeout(fn, ms)); };
+
+		const setStatus = (label: string, working: boolean) => {
+			statusPill.textContent = label;
+			statusPill.classList.toggle('working', working);
+		};
+
+		const addMessage = (role: 'user' | 'agent', text: string): HTMLElement => {
+			const msg = dom.append(thread, dom.$(`.guardrail-demo-msg.${role}`));
+			const body = dom.append(msg, dom.$('.guardrail-demo-msg-body'));
+			body.textContent = text;
+			thread.scrollTop = thread.scrollHeight;
+			return body;
+		};
+
+		const addLine = (body: HTMLElement, cls: string, text: string) => {
+			const line = dom.append(body, dom.$(`.guardrail-demo-line.${cls}`));
+			dom.append(line, dom.$('span')).textContent = text;
+			thread.scrollTop = thread.scrollHeight;
+			return line;
+		};
+
+		// Bubble handles that later steps append tool lines / follow-ups to.
+		let planBody: HTMLElement;
+		let refactorBody: HTMLElement;
+		let syncBody: HTMLElement;
+		let pendingNetLine: HTMLElement;
+
+		// 0s — first user prompt.
+		addMessage('user', localize('guardrailDemoUserMsg1', "Can you refactor our auth module? The token handling in src/auth is getting messy."));
+		setStatus(localize('guardrailDemoStatusWorking', "Working…"), true);
+
+		// 0.7s — agent acknowledges and starts reading.
+		at(700, () => {
+			planBody = addMessage('agent', localize('guardrailDemoAgentPlan', "Sure — let me read through the auth module first so I understand how tokens flow today."));
+		});
+		at(1600, () => {
+			addLine(planBody, 'tool', localize('guardrailDemoToolRead1', "Read src/auth/token.ts"));
+		});
+		at(2300, () => {
+			addLine(planBody, 'tool', localize('guardrailDemoToolRead2', "Read src/auth/session.ts"));
+		});
+		at(3000, () => {
+			addLine(planBody, 'tool', localize('guardrailDemoToolRead3', "Read src/auth/keychain.ts"));
+		});
+
+		// 3.8s — agent reports findings, status goes idle (waiting on the user).
+		at(3800, () => {
+			addMessage('agent', localize('guardrailDemoAgentFindings', "Got it. Token creation, refresh, and storage are all tangled in token.ts. I'd split them into a TokenStore, a SessionManager, and a small KeyChain wrapper. Want me to go ahead?"));
+			setStatus(localize('guardrailDemoStatusIdle', "Idle"), false);
+		});
+
+		// 4.8s — user approves and adds a second ask.
+		at(4800, () => {
+			addMessage('user', localize('guardrailDemoUserMsg2', "Yes, do it. And once it's done, sync the new keys up to our payments API so prod stays in sync."));
+			setStatus(localize('guardrailDemoStatusWorking', "Working…"), true);
+		});
+
+		// 5.5s — agent does the local refactor.
+		at(5500, () => {
+			refactorBody = addMessage('agent', localize('guardrailDemoAgentRefactor', "On it. Splitting the module and updating the imports now."));
+		});
+		at(6300, () => {
+			addLine(refactorBody, 'tool', localize('guardrailDemoToolEdit1', "Edited src/auth/tokenStore.ts (new)"));
+		});
+		at(7000, () => {
+			addLine(refactorBody, 'tool', localize('guardrailDemoToolEdit2', "Edited src/auth/sessionManager.ts (new)"));
+		});
+		at(7700, () => {
+			addLine(refactorBody, 'tool', localize('guardrailDemoToolEdit3', "Updated 6 imports across src/auth/*"));
+		});
+
+		// 8.4s — agent moves to the second ask: the key sync.
+		at(8400, () => {
+			syncBody = addMessage('agent', localize('guardrailDemoAgentSync', "Local refactor's done and the build is green. Now syncing the new keys to the payments API…"));
+		});
+		at(9300, () => {
+			pendingNetLine = addLine(syncBody, 'tool pending', localize('guardrailDemoToolNet', "Attempting network call: POST https://api.io/v2/keys"));
+		});
+
+		// 10.1s — the guardrail intercepts the risky action.
+		at(10100, () => {
+			guardrailNotificationStore.add({
+				id: `demo-net-${Date.now()}`,
+				title: localize('guardrailDemoIssueTitle', "Network call blocked"),
+				detail: localize('guardrailDemoIssueDetail', "Tool gate: network egress = disallowed — POST to api.io was intercepted before it ran."),
+				scenario: 'jailbroken',
+				timestamp: Date.now(),
+			});
+			pendingNetLine?.classList.remove('pending');
+			pendingNetLine?.classList.add('blocked');
+			addLine(syncBody, 'blocked', localize('guardrailDemoBlockedLine', "Blocked by guardrail — outbound network egress is not allowed."));
+			addMessage('agent', localize('guardrailDemoAgentRecover', "That outbound call was blocked by a guardrail, so I didn't send your keys anywhere. The refactor is committed locally — I've left the key sync for you to approve."));
+			setStatus(localize('guardrailDemoStatusIdle', "Idle"), false);
+		});
+	}
+
+	/**
+	 * Render the guardrail notification popup above the demo chat box. Visible
+	 * only once a blocked action has been recorded this session; clicking it
+	 * opens the Agents customization view (the guardrail surface).
+	 */
+	private _renderGuardrailNotificationBar(parent: HTMLElement): void {
+		const bar = dom.append(parent, dom.$('button.guardrail-notification-bar'));
+		bar.setAttribute('type', 'button');
+		bar.tabIndex = 0;
+
+		const text = dom.append(bar, dom.$('span.guardrail-notification-text'));
+		const action = dom.append(bar, dom.$('span.guardrail-notification-action'));
+		action.textContent = localize('guardrailBarAction', "Review in Agents");
+
+		const countObs = observableFromEvent(
+			guardrailNotificationStore.onDidChange,
+			() => guardrailNotificationStore.count
+		);
+		this._register(autorun(reader => {
+			const count = countObs.read(reader);
+			bar.classList.toggle('hidden', count === 0);
+			text.textContent = count === 1
+				? localize('guardrailBarTextOne', "Guardrails blocked 1 risky action this session")
+				: localize('guardrailBarTextMany', "Guardrails blocked {0} risky actions this session", count);
+			bar.setAttribute('aria-label', localize('guardrailBarAria', "{0} guardrail issues blocked this session. Review in the Agents view.", count));
+		}));
+
+		const open = () => {
+			this.commandService.executeCommand(
+				AICustomizationManagementCommands.OpenEditor,
+				AICustomizationManagementSection.Agents
+			);
+		};
+		this._register(dom.addDisposableListener(bar, dom.EventType.CLICK, e => {
+			e.preventDefault();
+			open();
+		}));
+		this._register(dom.addDisposableListener(bar, dom.EventType.KEY_DOWN, (e: KeyboardEvent) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				open();
+			}
+		}));
 	}
 
 	/**

@@ -278,6 +278,266 @@
 	flex: 1;
 }
 
+.ai-customization-list-widget .guardrail-prototype-panel {
+	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	margin: 0 4px 10px;
+	border: 1px solid var(--vscode-widget-border);
+	border-radius: 6px;
+	background-color: var(--vscode-editorWidget-background);
+	overflow: hidden;
+}
+
+.ai-customization-list-widget .guardrail-section {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding: 12px;
+}
+
+.ai-customization-list-widget .guardrail-section + .guardrail-section {
+	border-top: 1px solid var(--vscode-widget-border);
+}
+
+.ai-customization-list-widget .guardrail-section-title {
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.ai-customization-list-widget .guardrail-scenario-desc {
+	font-size: 12px;
+	line-height: 17px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.ai-customization-list-widget .guardrail-scenario-toggle {
+	display: flex;
+	gap: 6px;
+}
+
+.ai-customization-list-widget .guardrail-seg-btn {
+	flex: 1;
+	padding: 5px 8px;
+	text-align: center;
+	font-size: 12px;
+	border-radius: 2px;
+	border: 1px solid var(--vscode-button-border, var(--vscode-widget-border));
+	background-color: var(--vscode-button-secondaryBackground);
+	color: var(--vscode-button-secondaryForeground);
+	cursor: pointer;
+	user-select: none;
+}
+
+.ai-customization-list-widget .guardrail-seg-btn:hover {
+	background-color: var(--vscode-button-secondaryHoverBackground);
+}
+
+.ai-customization-list-widget .guardrail-seg-btn.active {
+	background-color: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	border-color: var(--vscode-button-background);
+}
+
+.ai-customization-list-widget .guardrail-action-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 6px;
+}
+
+.ai-customization-list-widget .guardrail-action-btn {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 7px 9px;
+	text-align: left;
+	border-radius: 2px;
+	border: 1px solid var(--vscode-widget-border);
+	background-color: var(--vscode-editorWidget-background);
+	color: var(--vscode-foreground);
+	cursor: pointer;
+	font-family: inherit;
+}
+
+.ai-customization-list-widget .guardrail-action-btn:hover {
+	background-color: var(--vscode-list-hoverBackground);
+}
+
+.ai-customization-list-widget .guardrail-action-label {
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 16px;
+}
+
+.ai-customization-list-widget .guardrail-action-sub {
+	font-size: 11px;
+	line-height: 15px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.ai-customization-list-widget .guardrail-status-summary {
+	display: flex;
+	gap: 16px;
+	padding: 10px 12px;
+	border-radius: 4px;
+	border: 1px solid var(--vscode-widget-border);
+	background-color: var(--vscode-editor-background);
+}
+
+.ai-customization-list-widget .guardrail-stat {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+}
+
+.ai-customization-list-widget .guardrail-stat-num {
+	font-size: 17px;
+	font-weight: 600;
+	line-height: 22px;
+	color: var(--vscode-foreground);
+}
+
+.ai-customization-list-widget .guardrail-stat-num.state-passed {
+	color: var(--vscode-testing-iconPassed);
+}
+
+.ai-customization-list-widget .guardrail-stat-num.state-blocked {
+	color: var(--vscode-editorError-foreground);
+}
+
+.ai-customization-list-widget .guardrail-stat-label {
+	font-size: 11px;
+	line-height: 15px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.ai-customization-list-widget .guardrail-result-banner {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 10px;
+	border-radius: 4px;
+	border: 1px solid var(--vscode-widget-border);
+	font-size: 12px;
+}
+
+.ai-customization-list-widget .guardrail-result-banner.neutral {
+	color: var(--vscode-descriptionForeground);
+}
+
+.ai-customization-list-widget .guardrail-result-banner.ok {
+	border-color: var(--vscode-testing-iconPassed);
+	color: var(--vscode-testing-iconPassed);
+}
+
+.ai-customization-list-widget .guardrail-result-banner.blocked {
+	border-color: var(--vscode-editorError-foreground);
+	color: var(--vscode-editorError-foreground);
+}
+
+.ai-customization-list-widget .guardrail-result-tag {
+	flex-shrink: 0;
+	padding: 1px 7px;
+	border-radius: 999px;
+	border: 1px solid currentColor;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	line-height: 16px;
+}
+
+.ai-customization-list-widget .guardrail-result-text {
+	min-width: 0;
+	line-height: 16px;
+}
+
+.ai-customization-list-widget .guardrail-log {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	max-height: 220px;
+	overflow-y: auto;
+}
+
+.ai-customization-list-widget .guardrail-log-empty {
+	font-size: 12px;
+	font-style: italic;
+	color: var(--vscode-descriptionForeground);
+	padding: 4px 0;
+}
+
+.ai-customization-list-widget .guardrail-log-entry {
+	padding: 8px 10px;
+	border-radius: 2px;
+	border: 1px solid var(--vscode-widget-border);
+	border-left-width: 3px;
+	background-color: var(--vscode-editor-background);
+}
+
+.ai-customization-list-widget .guardrail-log-entry.allowed {
+	border-left-color: var(--vscode-testing-iconPassed);
+}
+
+.ai-customization-list-widget .guardrail-log-entry.blocked {
+	border-left-color: var(--vscode-editorError-foreground);
+}
+
+.ai-customization-list-widget .guardrail-log-action {
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 16px;
+	color: var(--vscode-foreground);
+	margin-bottom: 6px;
+}
+
+.ai-customization-list-widget .guardrail-log-layers {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.ai-customization-list-widget .guardrail-log-layer {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+}
+
+.ai-customization-list-widget .guardrail-pill {
+	flex-shrink: 0;
+	margin-top: 1px;
+	padding: 1px 6px;
+	border-radius: 2px;
+	border: 1px solid currentColor;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	line-height: 14px;
+	white-space: nowrap;
+}
+
+.ai-customization-list-widget .guardrail-pill.pill-pass {
+	color: var(--vscode-testing-iconPassed);
+}
+
+.ai-customization-list-widget .guardrail-pill.pill-fail {
+	color: var(--vscode-editorError-foreground);
+}
+
+.ai-customization-list-widget .guardrail-pill.pill-skip {
+	color: var(--vscode-descriptionForeground);
+}
+
+.ai-customization-list-widget .guardrail-log-layer-text {
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--vscode-descriptionForeground);
+}
+
 .ai-customization-list-widget .list-container {
 	flex: 1;
 	min-height: 0;

@@ -41,6 +41,7 @@ import { AccessibleViewRegistry } from '../../../../platform/accessibility/brows
 import { SessionsChatAccessibilityHelp } from './sessionsChatAccessibilityHelp.js';
 import { SessionsOpenerParticipantContribution } from './sessionsOpenerParticipant.js';
 import '../../sessions/browser/mobile/mobileOverlayContribution.js';
+import { guardrailNotificationStore } from '../../../../workbench/contrib/chat/browser/aiCustomization/guardrailNotificationStore.js';
 
 
 class NewChatInSessionsWindowAction extends Action2 {
@@ -69,6 +70,28 @@ class NewChatInSessionsWindowAction extends Action2 {
 }
 
 registerAction2(NewChatInSessionsWindowAction);
+
+class StartGuardrailDemoSessionAction extends Action2 {
+
+	constructor() {
+		super({
+			id: 'workbench.action.sessions.guardrailDemo',
+			title: localize2('chat.guardrailDemo.label', "Guardrails: Start Demo Session"),
+			category: CHAT_CATEGORY,
+			f1: true,
+		});
+	}
+
+	override run(accessor: ServicesAccessor): void {
+		const sessionsManagementService = accessor.get(ISessionsManagementService);
+		// Make sure the new-chat surface (which hosts the demo overlay) is the
+		// active view, then kick off the scripted working-session flow.
+		sessionsManagementService.openNewSessionView();
+		guardrailNotificationStore.startDemo();
+	}
+}
+
+registerAction2(StartGuardrailDemoSessionAction);
 
 // --- Sessions New Chat View Registration ---
 // Registers in the same ChatBar container as the existing ChatViewPane.
