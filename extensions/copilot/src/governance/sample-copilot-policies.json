@@ -1,0 +1,53 @@
+{
+  "policies": [
+    {
+      "id": "SEC-1",
+      "label": "No hardcoded credentials",
+      "description": "Load secrets from process.env or a secrets manager — never inline them.",
+      "scope": "org",
+      "enforcement": "enforce",
+      "category": "security",
+      "autoFix": true,
+      "fix": "Replace the inline value with process.env.YOUR_SECRET_NAME and add the key to .env.example."
+    },
+    {
+      "id": "SEC-4",
+      "label": "No custom cryptographic implementations",
+      "description": "Use jose@5 with RS256 for all JWT work. Do not implement crypto primitives by hand.",
+      "scope": "org",
+      "enforcement": "enforce",
+      "category": "security",
+      "autoFix": true,
+      "fix": "Replace the custom implementation with the jose library equivalent."
+    },
+    {
+      "id": "DEP-1",
+      "label": "Only packages already in package.json may be introduced",
+      "description": "Do not add new npm packages without explicit approval. Suggest existing alternatives.",
+      "scope": "project",
+      "enforcement": "warn",
+      "category": "dependencies",
+      "autoFix": false
+    },
+    {
+      "id": "QA-1",
+      "label": "Tests required when modifying auth or payment logic",
+      "description": "Any change to authentication or payment code must include at least one new test.",
+      "scope": "project",
+      "enforcement": "enforce",
+      "category": "quality",
+      "autoFix": false
+    }
+  ],
+  "rateLimits": {
+    "enabled": false,
+    "maxFilesPerTask": 10,
+    "maxToolCallsPerRun": 20
+  },
+  "behaviors": {
+    "autoFixSafeIssues": true,
+    "showDiffSummaryAfterEdits": true,
+    "includeRationaleInResponses": true,
+    "mode": "enforce"
+  }
+}

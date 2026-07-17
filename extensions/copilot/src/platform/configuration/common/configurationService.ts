@@ -1107,6 +1107,31 @@ export namespace ConfigKey {
 	export const GrepSearchOutputFormat = defineSetting<'grep' | 'tag'>('chat.tools.grepSearch.outputFormat', ConfigType.ExperimentBased, 'grep');
 	export const GrepSearchDefaultMaxResults = defineSetting<number>('chat.tools.grepSearch.defaultMaxResults', ConfigType.ExperimentBased, 20);
 	export const GrepSearchMaxResultsCap = defineSetting<number>('chat.tools.grepSearch.maxResultsCap', ConfigType.ExperimentBased, 200);
+
+	/**
+	 * Governance settings — shift-left standards enforcement.
+	 * All settings map to public `github.copilot.governance.*` entries in package.json.
+	 */
+	export namespace Governance {
+		/** Master switch. When false, the governance module is a no-op. */
+		export const Enabled = defineSetting<boolean>('governance.enabled', ConfigType.Simple, true);
+		/** `enforce` silently fixes; `warn` flags without changing generated code. */
+		export const Mode = defineSetting<string>('governance.mode', ConfigType.Simple, 'enforce');
+		/** Remote URL to fetch a centrally-hosted copilot-policies.json (optional). */
+		export const PolicyUrl = defineSetting<string>('governance.policyUrl', ConfigType.Simple, '');
+		/** Auto-apply fixes that don't alter developer intent. */
+		export const AutoFixSafeIssues = defineSetting<boolean>('governance.autoFixSafeIssues', ConfigType.Simple, true);
+		/** Emit a concise diff summary after each agent edit session. */
+		export const ShowDiffSummaryAfterEdits = defineSetting<boolean>('governance.showDiffSummaryAfterEdits', ConfigType.Simple, true);
+		/** Include a one-sentence rationale for each governance decision in agent responses. */
+		export const IncludeRationaleInResponses = defineSetting<boolean>('governance.includeRationaleInResponses', ConfigType.Simple, true);
+		/** Enable per-task rate limiting of file edits and tool calls. */
+		export const RateLimitsEnabled = defineSetting<boolean>('governance.rateLimits.enabled', ConfigType.Simple, false);
+		/** Maximum number of files Copilot may edit in a single agent run (requires rateLimits.enabled). */
+		export const RateLimitsMaxFilesPerTask = defineSetting<number>('governance.rateLimits.maxFilesPerTask', ConfigType.Simple, 10);
+		/** Maximum number of tool calls per agent run (requires rateLimits.enabled). */
+		export const RateLimitsMaxToolCallsPerRun = defineSetting<number>('governance.rateLimits.maxToolCallsPerRun', ConfigType.Simple, 20);
+	}
 }
 
 export function getAllConfigKeys(): string[] {
