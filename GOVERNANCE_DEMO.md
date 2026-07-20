@@ -1,6 +1,6 @@
 # GitHub Copilot Governance — Demo Guide
 
-> **Branch:** `eli/charger-public` on `microsoft/vscode`
+> **Branch:** `sara/copilot-governance` on [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance)
 > **Feature:** Shift-left standards enforcement built into Copilot Chat
 
 Copilot Governance silently applies your org or personal coding standards during every agent run — no gates, no interruptions. It shapes the output, then explains what it did.
@@ -18,9 +18,9 @@ Copilot Governance silently applies your org or personal coding standards during
 ### 1 — Clone and install
 
 ```bash
-git clone https://github.com/microsoft/vscode.git
+git clone https://github.com/sarachizariMSFT/vscode.git
 cd vscode
-git checkout eli/charger-public
+git checkout sara/copilot-governance
 npm install
 ```
 
