@@ -76,9 +76,9 @@ export class GovernanceOnboardingContribution extends Disposable implements IExt
 	// -----------------------------------------------------------------------
 
 	private async _runFlow(): Promise<void> {
-		const type = await this._pickProjectType();
+		let type = await this._pickProjectType();
 		if (!type) {
-			return; // dismissed
+			type = await this._detectProjectType();
 		}
 
 		const standards = type === 'existing'
@@ -112,6 +112,21 @@ export class GovernanceOnboardingContribution extends Disposable implements IExt
 		});
 
 		return picked?.value;
+	}
+
+	private async _detectProjectType(): Promise<'existing' | 'greenfield'> {
+		const folders = this._workspaceService.getWorkspaceFolders();
+		if (folders.length === 0) {
+			return 'greenfield';
+		}
+
+		try {
+			const rootEntries = await this._fileSystemService.readDirectory(folders[0]);
+			const hasProjectSignals = rootEntries.length > 0;
+			return hasProjectSignals ? 'existing' : 'greenfield';
+		} catch {
+			return 'greenfield';
+		}
 	}
 
 	// -----------------------------------------------------------------------

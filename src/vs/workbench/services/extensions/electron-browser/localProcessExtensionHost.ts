@@ -371,7 +371,7 @@ export class NativeLocalProcessExtensionHost extends Disposable implements IExte
 						priority: NotificationPriority.URGENT
 					}
 				);
-			}, 10000);
+			}, 60000); // Increased from 10s to 60s for large dev bundles
 		}
 
 		// Initialize extension host process with hand shakes

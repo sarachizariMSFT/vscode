@@ -2777,7 +2777,7 @@ type ZenModeConfiguration = {
 };
 
 function getZenModeConfiguration(configurationService: IConfigurationService): ZenModeConfiguration {
-	return configurationService.getValue<ZenModeConfiguration>(WorkbenchLayoutSettings.ZEN_MODE_CONFIG);
+	return configurationService.getValue<ZenModeConfiguration>(WorkbenchLayoutSettings.ZEN_MODE_CONFIG) ?? { restore: false, silentNotifications: false };
 }
 
 //#endregion

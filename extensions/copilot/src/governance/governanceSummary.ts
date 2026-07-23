@@ -21,11 +21,14 @@ function policyIcon(status: ActivePolicy['status']): string {
 }
 
 /**
- * Builds a markdown summary block for enterprise policies to append after an agent response.
+ * Builds a markdown summary block for governance state to append after an agent response.
  * Format (plain markdown — isTrusted boolean is not supported in chat participants):
  *   ---
  *   🛡 **Guardrails applied** — N redirected, N enforced
  *   | | Policy | Scope |
+ *   ...
+ *   ◉ **Kept your N coding standards**
+ *   | | Standard |
  *   ...
  */
 function buildEnterpriseSummary(policies: readonly ActivePolicy[]): string {
@@ -93,16 +96,19 @@ function buildIndividualSummary(standards: readonly Standard[]): string {
 /**
  * Returns the post-response governance summary as a plain markdown string, or undefined
  * when governance is inactive or has nothing to report.
- *
- * Priority: enterprise policies → individual standards → undefined.
  */
 export function buildGovernanceSummaryMarkdown(store: PolicyStore): string | undefined {
-	let raw: string;
-	if (store.activePolicies.length > 0) {
-		raw = buildEnterpriseSummary(store.activePolicies);
-	} else {
-		const enabled = store.activeStandards.filter(s => s.enabled);
-		raw = enabled.length > 0 ? buildIndividualSummary(enabled) : '';
+	const blocks: string[] = [];
+
+	const enterprise = buildEnterpriseSummary(store.activePolicies);
+	if (enterprise) {
+		blocks.push(enterprise);
 	}
-	return raw || undefined;
+
+	const individual = buildIndividualSummary(store.activeStandards);
+	if (individual) {
+		blocks.push(individual);
+	}
+
+	return blocks.length > 0 ? blocks.join('\n') : undefined;
 }

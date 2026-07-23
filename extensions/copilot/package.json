@@ -2426,6 +2426,21 @@
     ],
     "commands": [
       {
+        "command": "github.copilot.governance.openPanel",
+        "title": "Open Runtime Governance Settings",
+        "category": "Runtime Governance"
+      },
+      {
+        "command": "github.copilot.governance.setupStandards",
+        "title": "Setup Governance Standards",
+        "category": "Runtime Governance"
+      },
+      {
+        "command": "github.copilot.governance.showInferenceModal",
+        "title": "Show Inference Signals",
+        "category": "Runtime Governance"
+      },
+      {
         "command": "github.copilot.chat.triggerPermissiveSignIn",
         "title": "%github.copilot.command.triggerPermissiveSignIn%"
       },

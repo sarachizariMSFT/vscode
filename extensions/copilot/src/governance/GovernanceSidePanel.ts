@@ -52,7 +52,7 @@ function separator(label: string): vscode.QuickPickItem {
  * Opens as a VS Code Quick Pick that allows the user to:
  * - Toggle individual policies / standards on or off
  * - Switch the global enforcement mode between "enforce" and "warn"
- * - Trigger a fresh workspace scan (individual mode only)
+ * - Trigger a fresh workspace scan for repo-inferred standards
  *
  * Registered as an `IExtensionContribution` so it is activated with the extension
  * and registers the `github.copilot.governance.openPanel` command.
@@ -154,7 +154,7 @@ export class GovernanceSidePanel extends Disposable implements IExtensionContrib
 				itemType: 'action',
 				action: 'rescan',
 				label: '$(refresh) Re-run workspace scan',
-				detail: 'Re-analyse your workspace to update the inferred coding standards',
+				detail: 'Re-analyse your workspace to refresh inferred governance standards',
 			};
 			items.push(rescanItem);
 

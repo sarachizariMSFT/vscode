@@ -77,11 +77,13 @@ export function buildGovernanceBlock(store: PolicyStore, config: GovernanceConfi
 	if (!config.enabled) {
 		return '';
 	}
-	if (store.activePolicies.length > 0) {
-		return buildEnterpriseBlock(store.activePolicies, config);
+	const enterprise = buildEnterpriseBlock(store.activePolicies, config);
+	const individual = buildIndividualBlock(store.activeStandards, config);
+	if (!enterprise && !individual) {
+		return '';
 	}
-	if (store.activeStandards.length > 0) {
-		return buildIndividualBlock(store.activeStandards, config);
-	}
-	return '';
+
+	return [enterprise, individual]
+		.filter(Boolean)
+		.join('\n\n');
 }

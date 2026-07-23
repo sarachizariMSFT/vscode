@@ -8,7 +8,7 @@ import { ILogService } from '../platform/log/common/logService';
 import { Disposable } from '../util/vs/base/common/lifecycle';
 import { IExtensionContribution } from '../extension/common/contributions';
 
-/** VS Code command ID for the "How Copilot infers your standards" modal. */
+/** VS Code command ID for the "How Copilot infers governance" modal. */
 export const INFERENCE_MODAL_COMMAND_ID = 'github.copilot.governance.showInferenceModal';
 
 /**
@@ -45,7 +45,7 @@ const INFERENCE_SIGNALS = [
 
 function buildModalContent(): vscode.MarkdownString {
 	const lines: string[] = [
-		'## How Copilot infers your coding standards',
+		'## How Copilot infers governance for this workspace',
 		'',
 		'Copilot scans your workspace using five lightweight signals — **no file contents leave your machine**. Only file names and directory structure are read.',
 		'',
@@ -61,9 +61,9 @@ function buildModalContent(): vscode.MarkdownString {
 		'',
 		'It does **not** read file contents, send data to any external endpoint, or store anything outside your workspace state.',
 		'',
-		'### Changing your standards',
+		'### Changing your governance',
 		'',
-		'Open the governance panel (`🛡 Guardrails` or `◉ N standards` in the status bar) to toggle any inferred standard on or off. Changes take effect on the next agent request.',
+		'Open the governance panel (`🛡 Guardrails` in the status bar) to toggle any inferred standard on or off. Changes take effect on the next agent request.',
 	];
 
 	const md = new vscode.MarkdownString(lines.join('\n'));
@@ -73,7 +73,7 @@ function buildModalContent(): vscode.MarkdownString {
 }
 
 /**
- * "How Copilot infers your standards" modal (Phase 8 / Phase 7 detail).
+ * "How Copilot infers governance" modal (Phase 8 / Phase 7 detail).
  *
  * Registered as a command — invoked from the GovernanceSidePanel's "Learn more" item.
  * Opens an information message with the full inference signal table from spec §5.

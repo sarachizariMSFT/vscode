@@ -11,6 +11,7 @@ import { ILogService } from '../platform/log/common/logService';
 import { IWorkspaceService } from '../platform/workspace/common/workspaceService';
 import { Disposable } from '../util/vs/base/common/lifecycle';
 import { IExtensionContribution } from '../extension/common/contributions';
+import { InferenceEngine } from './inferenceEngine';
 import { PolicyLoader } from './policyLoader';
 import { PolicyStore } from './policyStore';
 import { Standard } from './types';
@@ -60,21 +61,19 @@ export class GovernanceService extends Disposable implements IExtensionContribut
 			this._logService,
 		);
 
-		const hasEnterprisePolicies = await this._loadPolicies(loader);
-		if (!hasEnterprisePolicies) {
-			await this._loadOrQueueInference();
-		}
+		await this._refreshGovernanceState(loader);
 
 		// Watch .github/copilot-policies.json for changes and reload
 		const watcher = this._fileSystemService.createFileSystemWatcher(POLICY_FILE_GLOB);
 		this._register(watcher);
-		this._register(watcher.onDidCreate(() => void this._loadPolicies(loader)));
-		this._register(watcher.onDidChange(() => void this._loadPolicies(loader)));
-		this._register(watcher.onDidDelete(() => {
-			this._policyStore.clear();
-			this._logService.trace('[Governance] copilot-policies.json removed — policy store cleared');
-			void this._loadOrQueueInference();
-		}));
+		this._register(watcher.onDidCreate(() => void this._refreshGovernanceState(loader)));
+		this._register(watcher.onDidChange(() => void this._refreshGovernanceState(loader)));
+		this._register(watcher.onDidDelete(() => void this._refreshGovernanceState(loader)));
+	}
+
+	private async _refreshGovernanceState(loader: PolicyLoader): Promise<void> {
+		const hasEnterprisePolicies = await this._loadPolicies(loader);
+		await this._loadOrQueueInference(hasEnterprisePolicies);
 	}
 
 	/**
@@ -85,7 +84,6 @@ export class GovernanceService extends Disposable implements IExtensionContribut
 		const workspaceResult = await loader.loadFromWorkspace();
 		if (workspaceResult) {
 			this._policyStore.setPolicies(workspaceResult.policies);
-			this._policyStore.setNeedsOnboarding(false);
 			this._logService.trace(`[Governance] loaded ${workspaceResult.policies.length} policies from .github/copilot-policies.json`);
 			return true;
 		}
@@ -95,11 +93,12 @@ export class GovernanceService extends Disposable implements IExtensionContribut
 			const urlResult = await loader.loadFromUrl(policyUrl);
 			if (urlResult) {
 				this._policyStore.setPolicies(urlResult.policies);
-				this._policyStore.setNeedsOnboarding(false);
 				this._logService.trace(`[Governance] loaded ${urlResult.policies.length} policies from ${policyUrl}`);
 				return true;
 			}
 		}
+
+		this._policyStore.setPolicies([]);
 
 		return false;
 	}
@@ -109,7 +108,7 @@ export class GovernanceService extends Disposable implements IExtensionContribut
 	 * If found, loads them into the store.  If not, signals that onboarding is needed
 	 * (Phase 5 UI will trigger the workspace scan and acceptance flow).
 	 */
-	private async _loadOrQueueInference(): Promise<void> {
+	private async _loadOrQueueInference(hasEnterprisePolicies: boolean): Promise<void> {
 		const cached = this._extensionContext.workspaceState.get<Standard[]>(STANDARDS_STATE_KEY);
 		if (cached && cached.length > 0) {
 			this._policyStore.setStandards(cached);
@@ -118,8 +117,23 @@ export class GovernanceService extends Disposable implements IExtensionContribut
 			return;
 		}
 
-		// No cached standards — Phase 5 will run the scan and present the onboarding checklist
-		this._policyStore.setNeedsOnboarding(true);
-		this._logService.trace('[Governance] no enterprise policy or cached standards — onboarding required');
+		const engine = new InferenceEngine(this._fileSystemService, this._workspaceService, this._logService);
+		const scanResult = await engine.scan();
+		const inferred = scanResult.inferredStandards;
+		if (inferred.length > 0) {
+			this._policyStore.setStandards(inferred);
+			this._policyStore.setNeedsOnboarding(false);
+			this._logService.trace(`[Governance] inferred ${inferred.length} standards from codebase and activated unified governance`);
+			return;
+		}
+
+		// No cached or inferred standards. Only suggest starter controls when no platform policies exist.
+		this._policyStore.setStandards([]);
+		this._policyStore.setNeedsOnboarding(!hasEnterprisePolicies);
+		if (hasEnterprisePolicies) {
+			this._logService.trace('[Governance] platform policies active; no standards inferred, onboarding not required');
+		} else {
+			this._logService.trace('[Governance] no platform policy and no codebase standards inferred — onboarding suggestions required');
+		}
 	}
 }

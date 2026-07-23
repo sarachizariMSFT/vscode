@@ -69,7 +69,7 @@ Silently enforces your org/team coding standards during every Copilot Chat agent
 - **Inference engine** — scans workspace to infer 5 coding standards (no file contents sent externally)
 - **Prompt injector** — prepends guardrails as a system message to every agent run
 - **Post-response summary** — plain markdown table after each agent response
-- **Status bar badge** — `🛡 Guardrails N` (enterprise) or `◉ N standards` (individual)
+- **Status bar badge** — `🛡 Guardrails N` (total active policies + standards, unified)
 - **Settings panel** — click the badge to toggle policies on/off or rescan
 - **9 settings** — `github.copilot.governance.*` config keys in VS Code settings
 

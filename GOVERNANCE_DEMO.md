@@ -1,6 +1,6 @@
 # GitHub Copilot Governance — Demo Guide
 
-> **Branch:** `sara/copilot-governance` on [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance)
+> **Branch:** `sara/copilot-governance-clean` on [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-clean)
 > **Feature:** Shift-left standards enforcement built into Copilot Chat
 
 Copilot Governance silently applies your org or personal coding standards during every agent run — no gates, no interruptions. It shapes the output, then explains what it did.
@@ -20,7 +20,7 @@ Copilot Governance silently applies your org or personal coding standards during
 ```bash
 git clone https://github.com/sarachizariMSFT/vscode.git
 cd vscode
-git checkout sara/copilot-governance
+git checkout sara/copilot-governance-clean
 npm install
 ```
 
@@ -93,7 +93,7 @@ Drop a `.github/copilot-policies.json` file into the root of any workspace you o
 
 To re-trigger the flow manually at any time:
 ```
-Ctrl+Shift+P → Copilot Governance: Setup Standards
+Ctrl+Shift+P → Runtime Governance: Setup Governance Standards
 ```
 
 ---
@@ -119,9 +119,8 @@ All settings live under `github.copilot.governance.*` in VS Code settings:
 
 | Badge | Meaning |
 |---|---|
-| `🛡 Guardrails N` | N enterprise policies active |
-| `◉ N standards` | N individual coding standards active |
-| *(hidden)* | Governance disabled or no workspace open |
+| `🛡 Guardrails N` | N total active items (policies + standards combined) |
+| *(hidden)* | Governance disabled, store empty, or no workspace open |
 
 Click the badge to open the governance panel where you can toggle individual policies/standards and switch between Enforce and Warn mode.
 
@@ -143,7 +142,7 @@ extensions/copilot/src/governance/
   GovernanceOnboardingContribution.ts  # Individual mode onboarding flow
   GovernanceStatusBarItem.ts    # Reactive status bar badge
   GovernanceSidePanel.ts        # Settings panel (Quick Pick)
-  InferenceModal.ts             # "How Copilot infers your standards" modal
+  InferenceModal.ts             # "How Copilot infers governance" modal
 ```
 
 ---

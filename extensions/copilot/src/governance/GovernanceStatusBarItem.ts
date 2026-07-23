@@ -14,8 +14,8 @@ import { OPEN_PANEL_COMMAND_ID } from './GovernanceSidePanel';
 /**
  * Governance status bar item (Phase 7).
  *
- * Enterprise mode: `🛡 Guardrails N`  (N = active policy count)
- * Individual mode: `◉ N standards`   (N = enabled standard count)
+ * Unified mode: `🛡 Guardrails N` where N includes active platform policies
+ * and enabled inferred/recommended standards.
  *
  * Reacts reactively to `PolicyStore.onDidChange` so the badge stays current
  * without polling.  Hidden when governance is disabled or the store is empty.
@@ -58,17 +58,13 @@ export class GovernanceStatusBarItem extends Disposable implements IExtensionCon
 
 		const policies = this._policyStore.activePolicies;
 		const standards = this._policyStore.activeStandards.filter(s => s.enabled);
+		const total = policies.length + standards.length;
 
-		if (policies.length > 0) {
-			this._statusBarItem.text = `🛡 Guardrails ${policies.length}`;
-			this._statusBarItem.tooltip = `${policies.length} active governance polic${policies.length !== 1 ? 'ies' : 'y'} — click to manage`;
+		if (total > 0) {
+			this._statusBarItem.text = `🛡 Guardrails ${total}`;
+			this._statusBarItem.tooltip = `${policies.length} polic${policies.length === 1 ? 'y' : 'ies'}, ${standards.length} standard${standards.length === 1 ? '' : 's'} active — click to manage`;
 			this._statusBarItem.show();
-			this._logService.trace(`[Governance] status bar updated: ${policies.length} policies`);
-		} else if (standards.length > 0) {
-			this._statusBarItem.text = `◉ ${standards.length} standard${standards.length !== 1 ? 's' : ''}`;
-			this._statusBarItem.tooltip = `${standards.length} coding standard${standards.length !== 1 ? 's' : ''} active — click to manage`;
-			this._statusBarItem.show();
-			this._logService.trace(`[Governance] status bar updated: ${standards.length} standards`);
+			this._logService.trace(`[Governance] status bar updated: ${policies.length} policies, ${standards.length} standards`);
 		} else {
 			this._statusBarItem.hide();
 		}
