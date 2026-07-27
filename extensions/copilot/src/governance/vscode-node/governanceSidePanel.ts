@@ -9,10 +9,16 @@ import { ILogService } from '../../platform/log/common/logService';
 import { Disposable } from '../../util/vs/base/common/lifecycle';
 import { IExtensionContribution } from '../../extension/common/contributions';
 import { PolicyStore } from '../common/policyStore';
-import { ActivePolicy, Standard } from '../common/types';
+import { ActivePolicy, GuardrailMode, Standard } from '../common/types';
 import { INFERENCE_MODAL_COMMAND_ID } from './inferenceModal';
 /** Command registered by this contribution — also used by GovernanceStatusBarItem. */
 export const OPEN_PANEL_COMMAND_ID = 'github.copilot.governance.openPanel';
+
+/** Sets the global enforcement mode. Invoked from the status bar tooltip menu. */
+export const SET_MODE_COMMAND_ID = 'github.copilot.governance.setMode';
+
+/** Toggles a single policy on/off. Invoked from the status bar tooltip menu. */
+export const TOGGLE_POLICY_COMMAND_ID = 'github.copilot.governance.togglePolicy';
 
 /** Discriminated-union items for the governance Quick Pick. */
 interface PolicyItem extends vscode.QuickPickItem {
@@ -27,7 +33,8 @@ interface StandardItem extends vscode.QuickPickItem {
 
 interface ActionItem extends vscode.QuickPickItem {
 	readonly itemType: 'action';
-	readonly action: 'toggleMode' | 'rescan' | 'learnMore';
+	readonly action: 'setMode' | 'rescan' | 'learnMore';
+	readonly mode?: GuardrailMode;
 }
 
 type PanelItem = PolicyItem | StandardItem | ActionItem;
@@ -39,6 +46,21 @@ function isSeparator(item: vscode.QuickPickItem): boolean {
 function asPanelItem(item: vscode.QuickPickItem): PanelItem | undefined {
 	const p = item as Partial<PanelItem>;
 	return p.itemType ? p as PanelItem : undefined;
+}
+
+/**
+ * Stable identity for a panel item, used to restore the highlighted (active)
+ * item after the Quick Pick's `items` array is rebuilt. Separators and other
+ * non-panel items return `undefined`.
+ */
+function itemKey(item: vscode.QuickPickItem): string | undefined {
+	const p = asPanelItem(item);
+	if (!p) { return undefined; }
+	switch (p.itemType) {
+		case 'policy': return `policy:${p.policy.id}`;
+		case 'standard': return `standard:${p.standard.id}`;
+		case 'action': return `action:${p.action}:${p.mode ?? ''}`;
+	}
 }
 
 function separator(label: string): vscode.QuickPickItem {
@@ -68,6 +90,24 @@ export class GovernanceSidePanel extends Disposable implements IExtensionContrib
 		this._register(
 			vscode.commands.registerCommand(OPEN_PANEL_COMMAND_ID, () => this._open())
 		);
+		this._register(
+			vscode.commands.registerCommand(SET_MODE_COMMAND_ID, (mode: GuardrailMode) => this._setMode(mode))
+		);
+		this._register(
+			vscode.commands.registerCommand(TOGGLE_POLICY_COMMAND_ID, (id: string) => {
+				this._policyStore.togglePolicy(id);
+				this._logService.trace(`[Governance] toggled policy ${id}`);
+			})
+		);
+	}
+
+	private _setMode(mode: GuardrailMode): void {
+		void vscode.workspace.getConfiguration('github.copilot').update(
+			'governance.mode',
+			mode,
+			vscode.ConfigurationTarget.Workspace,
+		);
+		this._logService.trace(`[Governance] mode switched to ${mode}`);
 	}
 
 	private async _open(): Promise<void> {
@@ -77,19 +117,35 @@ export class GovernanceSidePanel extends Disposable implements IExtensionContrib
 		qp.canSelectMany = false;
 		qp.keepScrollPosition = true;
 
-		const refresh = () => { qp.items = this._buildItems(); };
+		// Rebuilds the item list while preserving the highlighted (active) item, so
+		// toggling a policy or switching mode doesn't make the selection jump to the
+		// top. Assigning `qp.items` resets the active item, so we restore it by key.
+		const refresh = () => {
+			const activeKey = qp.activeItems[0] ? itemKey(qp.activeItems[0]) : undefined;
+			const items = this._buildItems();
+			qp.items = items;
+			if (activeKey) {
+				const match = items.find(i => itemKey(i) === activeKey);
+				if (match) { qp.activeItems = [match]; }
+			}
+		};
 		refresh();
 
 		const disposables: vscode.Disposable[] = [];
 
 		disposables.push(
 			this._policyStore.onDidChange(() => refresh()),
+			vscode.workspace.onDidChangeConfiguration(e => {
+				if (e.affectsConfiguration('github.copilot.governance.mode')) { refresh(); }
+			}),
 			qp.onDidChangeSelection(([item]) => {
 				if (!item || isSeparator(item)) { return; }
 				const panelItem = asPanelItem(item);
 				if (panelItem) {
+					// Toggling policies/standards and switching mode fire change events
+					// that drive a single refresh, so we don't refresh again here (a
+					// second synchronous rebuild is what caused the menu to blink).
 					this._handleSelection(panelItem);
-					refresh();
 				}
 			}),
 			qp.onDidHide(() => {
@@ -104,30 +160,39 @@ export class GovernanceSidePanel extends Disposable implements IExtensionContrib
 	private _buildItems(): vscode.QuickPickItem[] {
 		const items: vscode.QuickPickItem[] = [];
 		const mode = this._configurationService.getConfig(ConfigKey.Governance.Mode) as string;
-		const policies = this._policyStore.activePolicies;
+		const policies = this._policyStore.allPolicies;
 		const standards = this._policyStore.activeStandards;
 
-		// ── Global settings ───────────────────────────────────────────────────
-		items.push(separator('Settings'));
-		const modeItem: ActionItem = {
-			itemType: 'action',
-			action: 'toggleMode',
-			label: `$(gear) Mode: ${mode === 'enforce' ? 'Enforce (active)' : 'Warn only (active)'}`,
-			detail: mode === 'enforce'
-				? 'Click to switch to Warn mode — Copilot flags issues but does not redirect'
-				: 'Click to switch to Enforce mode — Copilot redirects to compliant implementations',
-		};
-		items.push(modeItem);
+		// ── Mode ──────────────────────────────────────────────────────────────
+		items.push(separator('Mode'));
+		const modeOptions: readonly { readonly mode: GuardrailMode; readonly label: string; readonly detail: string }[] = [
+			{ mode: 'enforce', label: 'Enforce', detail: 'Block or redirect actions that violate a policy' },
+			{ mode: 'warn', label: 'Warn only', detail: 'Flag violations but let the action proceed' },
+		];
+		for (const option of modeOptions) {
+			const active = mode === option.mode;
+			const modeItem: ActionItem = {
+				itemType: 'action',
+				action: 'setMode',
+				mode: option.mode,
+				label: `${active ? '$(pass-filled)' : '$(circle-large-outline)'} ${option.label}`,
+				description: active ? 'Active' : undefined,
+				detail: option.detail,
+			};
+			items.push(modeItem);
+		}
 
 		// ── Enterprise policies ───────────────────────────────────────────────
 		if (policies.length > 0) {
-			items.push(separator('Active Policies'));
+			items.push(separator('Policies'));
 			for (const policy of policies) {
-				const icon = policy.status === 'warn' ? '$(warning)' : '$(pass)';
+				const enabled = this._policyStore.isPolicyEnabled(policy.id);
+				const icon = enabled ? '$(check)' : '$(circle-large-outline)';
 				const policyItem: PolicyItem = {
 					itemType: 'policy',
 					policy,
 					label: `${icon} ${policy.label}`,
+					description: enabled ? undefined : 'Disabled',
 					detail: `${policy.scope === 'org' ? `Org · ${policy.id}` : policy.scope} · ${policy.enforcement}${policy.description ? ' — ' + policy.description : ''}`,
 				};
 				items.push(policyItem);
@@ -177,15 +242,8 @@ export class GovernanceSidePanel extends Disposable implements IExtensionContrib
 			this._policyStore.toggleStandard(item.standard.id);
 			this._logService.trace(`[Governance] toggled standard ${item.standard.id}`);
 		} else if (item.itemType === 'action') {
-			if (item.action === 'toggleMode') {
-				const current = this._configurationService.getConfig(ConfigKey.Governance.Mode) as string;
-				const next = current === 'enforce' ? 'warn' : 'enforce';
-				void vscode.workspace.getConfiguration('github.copilot').update(
-					'governance.mode',
-					next,
-					vscode.ConfigurationTarget.Workspace,
-				);
-				this._logService.trace(`[Governance] mode switched to ${next}`);
+			if (item.action === 'setMode' && item.mode) {
+				this._setMode(item.mode);
 			} else if (item.action === 'rescan') {
 				void vscode.commands.executeCommand('github.copilot.governance.setupStandards');
 			} else if (item.action === 'learnMore') {

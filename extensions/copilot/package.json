@@ -3244,6 +3244,24 @@
         "title": "GitHub Copilot Chat",
         "id": "stable",
         "properties": {
+          "github.copilot.governance.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable Copilot governance. When off, the governance module is a no-op."
+          },
+          "github.copilot.governance.mode": {
+            "type": "string",
+            "enum": [
+              "enforce",
+              "warn"
+            ],
+            "enumDescriptions": [
+              "Block or redirect actions that violate a policy.",
+              "Flag violations but let the action proceed."
+            ],
+            "default": "enforce",
+            "description": "Controls how Copilot governance responds to policy violations."
+          },
           "github.copilot.chat.backgroundAgent.enabled": {
             "type": "boolean",
             "default": true,

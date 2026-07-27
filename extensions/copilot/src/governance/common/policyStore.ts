@@ -114,6 +114,11 @@ export class PolicyStore {
 		this._onDidChange.fire();
 	}
 
+	/** Whether a policy is currently enabled (i.e. not toggled off in this session). */
+	isPolicyEnabled(id: string): boolean {
+		return !this._disabledPolicyIds.has(id);
+	}
+
 	toggleStandard(id: string): void {
 		const standard = this._activeStandards.find(s => s.id === id);
 		if (standard) {

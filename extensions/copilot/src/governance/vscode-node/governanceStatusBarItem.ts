@@ -39,6 +39,9 @@ export class GovernanceStatusBarItem extends Disposable implements IExtensionCon
 			)
 		);
 
+		// Click opens the full Quick Pick panel — the only surface that stays open
+		// so the user can switch mode and toggle policies in place. The hover tooltip
+		// (below) is a read-only glance at current state.
 		this._statusBarItem.command = OPEN_PANEL_COMMAND_ID;
 
 		// Initial render
@@ -46,6 +49,11 @@ export class GovernanceStatusBarItem extends Disposable implements IExtensionCon
 
 		// React to store changes
 		this._register(this._policyStore.onDidChange(() => this._update()));
+
+		// React to mode changes so the tooltip glance stays current
+		this._register(vscode.workspace.onDidChangeConfiguration(e => {
+			if (e.affectsConfiguration('github.copilot.governance.mode')) { this._update(); }
+		}));
 	}
 
 	private _update(): void {
@@ -61,11 +69,40 @@ export class GovernanceStatusBarItem extends Disposable implements IExtensionCon
 
 		if (total > 0) {
 			this._statusBarItem.text = `🛡 Guardrails ${total}`;
-			this._statusBarItem.tooltip = `${policies.length} polic${policies.length === 1 ? 'y' : 'ies'}, ${standards.length} standard${standards.length === 1 ? '' : 's'} active — click to manage`;
+			this._statusBarItem.tooltip = this._buildTooltip();
 			this._statusBarItem.show();
 			this._logService.trace(`[Governance] status bar updated: ${policies.length} policies, ${standards.length} standards`);
 		} else {
 			this._statusBarItem.hide();
 		}
+	}
+
+	/**
+	 * Builds the read-only glance shown when hovering the status bar item.
+	 * Summarises the current mode and each policy's on/off state. Interaction
+	 * (switching mode, toggling policies) happens in the click-opened Quick Pick,
+	 * because a hover tooltip is dismissed on click and cannot stay open.
+	 */
+	private _buildTooltip(): vscode.MarkdownString {
+		const md = new vscode.MarkdownString(undefined, true /* supportThemeIcons */);
+
+		const mode = this._configurationService.getConfig(ConfigKey.Governance.Mode) as string;
+		const modeLabel = mode === 'enforce' ? 'Enforce' : 'Warn only';
+
+		md.appendMarkdown(`**GitHub Copilot Governance**\n\n`);
+		md.appendMarkdown(`$(shield) Mode: **${modeLabel}**\n\n`);
+
+		const policies = this._policyStore.allPolicies;
+		if (policies.length > 0) {
+			md.appendMarkdown(`Policies\n\n`);
+			for (const policy of policies) {
+				const enabled = this._policyStore.isPolicyEnabled(policy.id);
+				const icon = enabled ? '$(check)' : '$(circle-slash)';
+				md.appendMarkdown(`${icon} ${policy.label}${enabled ? '' : ' _(disabled)_'}\n\n`);
+			}
+		}
+
+		md.appendMarkdown(`---\n\n_Click to manage_`);
+		return md;
 	}
 }
