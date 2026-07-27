@@ -3262,6 +3262,41 @@
             "default": "enforce",
             "description": "Controls how Copilot governance responds to policy violations."
           },
+          "github.copilot.governance.policyUrl": {
+            "type": "string",
+            "default": "",
+            "description": "Optional URL to a centrally hosted copilot-policies.json. When set, policies are fetched from here in addition to the workspace .github/copilot-policies.json."
+          },
+          "github.copilot.governance.autoFixSafeIssues": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically apply fixes that don't alter developer intent."
+          },
+          "github.copilot.governance.showDiffSummaryAfterEdits": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show a concise governance summary after each agent edit session."
+          },
+          "github.copilot.governance.includeRationaleInResponses": {
+            "type": "boolean",
+            "default": true,
+            "description": "Include a one-sentence rationale for each governance decision in agent responses."
+          },
+          "github.copilot.governance.rateLimits.enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable per-run rate limiting of file edits and tool calls."
+          },
+          "github.copilot.governance.rateLimits.maxFilesPerTask": {
+            "type": "number",
+            "default": 10,
+            "description": "Maximum number of files Copilot may edit in a single agent run (requires rateLimits.enabled)."
+          },
+          "github.copilot.governance.rateLimits.maxToolCallsPerRun": {
+            "type": "number",
+            "default": 20,
+            "description": "Maximum number of tool calls Copilot may make in a single agent run (requires rateLimits.enabled)."
+          },
           "github.copilot.chat.backgroundAgent.enabled": {
             "type": "boolean",
             "default": true,
