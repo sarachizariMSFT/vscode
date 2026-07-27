@@ -4,14 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { ConfigKey, IConfigurationService } from '../platform/configuration/common/configurationService';
-import { ILogService } from '../platform/log/common/logService';
-import { Disposable } from '../util/vs/base/common/lifecycle';
-import { IExtensionContribution } from '../extension/common/contributions';
-import { PolicyStore } from './policyStore';
-import { ActivePolicy, Standard } from './types';
-import { INFERENCE_MODAL_COMMAND_ID } from './InferenceModal';
-
+import { ConfigKey, IConfigurationService } from '../../platform/configuration/common/configurationService';
+import { ILogService } from '../../platform/log/common/logService';
+import { Disposable } from '../../util/vs/base/common/lifecycle';
+import { IExtensionContribution } from '../../extension/common/contributions';
+import { PolicyStore } from '../common/policyStore';
+import { ActivePolicy, Standard } from '../common/types';
+import { INFERENCE_MODAL_COMMAND_ID } from './inferenceModal';
 /** Command registered by this contribution — also used by GovernanceStatusBarItem. */
 export const OPEN_PANEL_COMMAND_ID = 'github.copilot.governance.openPanel';
 

@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { ILogService } from '../platform/log/common/logService';
-import { Disposable } from '../util/vs/base/common/lifecycle';
-import { IExtensionContribution } from '../extension/common/contributions';
+import { ILogService } from '../../platform/log/common/logService';
+import { Disposable } from '../../util/vs/base/common/lifecycle';
+import { IExtensionContribution } from '../../extension/common/contributions';
 
 /** VS Code command ID for the "How Copilot infers governance" modal. */
 export const INFERENCE_MODAL_COMMAND_ID = 'github.copilot.governance.showInferenceModal';

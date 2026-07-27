@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IFileSystemService } from '../platform/filesystem/common/fileSystemService';
-import { IFetcherService } from '../platform/networking/common/fetcherService';
-import { ILogService } from '../platform/log/common/logService';
-import { IWorkspaceService } from '../platform/workspace/common/workspaceService';
-import { URI } from '../util/vs/base/common/uri';
-import { Policy, PolicySource } from './types';
+import { IFileSystemService } from '../../platform/filesystem/common/fileSystemService';
+import { IFetcherService } from '../../platform/networking/common/fetcherService';
+import { ILogService } from '../../platform/log/common/logService';
+import { IWorkspaceService } from '../../platform/workspace/common/workspaceService';
+import { URI } from '../../util/vs/base/common/uri';
+import { Policy, PolicyRule, PolicySource } from './types';
 
 /** Relative path inside any workspace folder where the enterprise policy file lives. */
 const POLICY_FILE_SEGMENTS = ['.github', 'copilot-policies.json'];
@@ -109,7 +109,9 @@ export class PolicyLoader {
 				? sourceField
 				: fallbackSource;
 
-		const policies: Policy[] = (raw['policies'] as unknown[]).filter(_isValidPolicy) as Policy[];
+		const policies: Policy[] = (raw['policies'] as unknown[])
+			.filter(_isValidPolicy)
+			.map(p => _normalizeRules(p as Policy, this._logService));
 
 		if (policies.length === 0 && (raw['policies'] as unknown[]).length > 0) {
 			this._logService.warn('[Governance] copilot-policies.json: all entries were invalid and were skipped');
@@ -117,6 +119,43 @@ export class PolicyLoader {
 
 		return { source, policies };
 	}
+}
+
+function _normalizeRules(policy: Policy, log: ILogService): Policy {
+	const rules = policy.rules;
+	if (!Array.isArray(rules)) {
+		return policy;
+	}
+	const validRules: PolicyRule[] = [];
+	for (const rule of rules) {
+		if (_isValidRule(rule)) {
+			validRules.push(rule);
+		} else {
+			log.warn(`[Governance] Policy "${policy.id}" has an invalid rule (skipped): ${JSON.stringify(rule)}`);
+		}
+	}
+	return { ...policy, rules: validRules };
+}
+
+function _isValidRule(rule: unknown): boolean {
+	if (typeof rule !== 'object' || rule === null) { return false; }
+	const r = rule as Record<string, unknown>;
+	if (r['target'] !== 'terminal' && r['target'] !== 'tool' && r['target'] !== 'file') { return false; }
+	if (r['action'] !== 'deny' && r['action'] !== 'warn' && r['action'] !== 'observe') { return false; }
+	if (typeof r['match'] !== 'object' || r['match'] === null) { return false; }
+	if (r['when'] !== undefined && !_isValidCondition(r['when'])) { return false; }
+	if (r['sets'] !== undefined && !_isStringArray(r['sets'])) { return false; }
+	return true;
+}
+
+function _isValidCondition(when: unknown): boolean {
+	if (typeof when !== 'object' || when === null) { return false; }
+	const flags = (when as Record<string, unknown>)['flags'];
+	return flags === undefined || _isStringArray(flags);
+}
+
+function _isStringArray(value: unknown): boolean {
+	return Array.isArray(value) && value.every(item => typeof item === 'string');
 }
 
 /** Minimum required fields for a policy entry. */

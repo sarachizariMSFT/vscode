@@ -3,11 +3,11 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { FileType } from '../platform/filesystem/common/fileTypes';
-import { IFileSystemService } from '../platform/filesystem/common/fileSystemService';
-import { ILogService } from '../platform/log/common/logService';
-import { IWorkspaceService } from '../platform/workspace/common/workspaceService';
-import { URI } from '../util/vs/base/common/uri';
+import { FileType } from '../../platform/filesystem/common/fileTypes';
+import { IFileSystemService } from '../../platform/filesystem/common/fileSystemService';
+import { ILogService } from '../../platform/log/common/logService';
+import { IWorkspaceService } from '../../platform/workspace/common/workspaceService';
+import { URI } from '../../util/vs/base/common/uri';
 import { Standard } from './types';
 
 export interface InferenceSignal {
@@ -30,6 +30,80 @@ export interface InferenceScanResult {
  * Phase 5 (in-thread onboarding UI) when no enterprise policy file exists.
  */
 export class InferenceEngine {
+
+	/**
+	 * Maps a developer's first prompt to relevant governance standards using keyword
+	 * matching.  Purely local — no network calls, no latency.  Falls back to a generic
+	 * best-practice starter set when no recognizable intent is found in the prompt.
+	 */
+	static scanFromPrompt(prompt: string): Standard[] {
+		const text = prompt.toLowerCase();
+		const candidates: Standard[] = [];
+
+		// Security: API / auth / web surface
+		if (/rest|api|graphql|endpoint|auth|oauth|jwt|login|sign[\s-]?up|register/.test(text)) {
+			candidates.push({ id: 'infer-no-secrets', label: 'No secrets or credentials in source files', evidence: 'API or auth work detected in prompt', enabled: true, category: 'security' });
+			candidates.push({ id: 'infer-input-validation', label: 'Validate all external inputs', evidence: 'API or auth work detected in prompt', enabled: true, category: 'security' });
+		}
+
+		// Testing (explicit mention)
+		if (/\btest(s|ing)?\b|spec|tdd|bdd|coverage/.test(text)) {
+			candidates.push({ id: 'infer-tests', label: 'Tests for every new function', evidence: 'Testing mentioned in prompt', enabled: true, category: 'quality' });
+		}
+
+		// TypeScript / JavaScript ecosystem
+		if (/typescript|\bts\b|react|next\.?js|vue|angular|\bnode(\.js)?\b|express/.test(text)) {
+			candidates.push({ id: 'infer-async-await', label: 'Async/await over raw promises', evidence: 'TypeScript/Node.js project detected', enabled: true, category: 'style' });
+			candidates.push({ id: 'infer-package-pinning', label: 'Pin all new dependencies explicitly', evidence: 'JS/TS project detected', enabled: true, category: 'dependencies' });
+		}
+
+		// Python ecosystem
+		if (/python|django|fastapi|flask|pytest/.test(text)) {
+			candidates.push({ id: 'infer-type-hints', label: 'Add type hints to all functions', evidence: 'Python project detected', enabled: true, category: 'style' });
+			candidates.push({ id: 'infer-tests', label: 'Tests for every new function', evidence: 'Python project detected', enabled: true, category: 'quality' });
+		}
+
+		// Infrastructure / cloud
+		if (/terraform|aws|azure|\bgcp\b|infra|cloud|\bk8s\b|kubernetes/.test(text)) {
+			candidates.push({ id: 'infer-no-hardcoded-creds', label: 'No hardcoded credentials or secrets', evidence: 'Infrastructure/cloud work detected', enabled: true, category: 'security' });
+			candidates.push({ id: 'infer-tag-resources', label: 'Tag all cloud resources', evidence: 'Infrastructure work detected', enabled: false, category: 'operations' });
+		}
+
+		// Architecture / DDD
+		if (/microservice|domain.driven|\bddd\b|clean arch|layer/.test(text)) {
+			candidates.push({ id: 'infer-module-boundaries', label: 'Separate concerns into layers', evidence: 'Layered/service architecture mentioned', enabled: false, category: 'architecture' });
+		}
+
+		// De-duplicate by id (first occurrence wins)
+		const seen = new Set<string>();
+		const unique = candidates.filter(s => seen.has(s.id) ? false : (seen.add(s.id), true));
+
+		// Fall back to generic greenfield defaults if nothing matched
+		if (unique.length === 0) {
+			return InferenceEngine._greenfieldDefaults();
+		}
+
+		// Always include a no-secrets standard — prepend if missing
+		if (!unique.some(s => s.id === 'infer-no-secrets')) {
+			unique.unshift({ id: 'infer-no-secrets', label: 'No secrets in source files', evidence: 'Recommended best practice', enabled: true, category: 'security' });
+		}
+
+		// Always include a testing standard — append if missing
+		if (!unique.some(s => s.id === 'infer-tests')) {
+			unique.push({ id: 'infer-tests', label: 'Tests for every new function', evidence: 'Recommended best practice', enabled: true, category: 'quality' });
+		}
+
+		return unique;
+	}
+
+	private static _greenfieldDefaults(): Standard[] {
+		return [
+			{ id: 'infer-tests', label: 'Tests for every new function', evidence: 'Recommended best practice', enabled: true, category: 'quality' },
+			{ id: 'infer-no-secrets', label: 'No secrets in source files', evidence: 'Recommended best practice', enabled: true, category: 'security' },
+			{ id: 'infer-async-await', label: 'Async/await over raw promises', evidence: 'Recommended best practice', enabled: true, category: 'style' },
+			{ id: 'infer-package-pinning', label: 'Pin all new dependencies explicitly', evidence: 'Recommended best practice', enabled: true, category: 'dependencies' },
+		];
+	}
 	constructor(
 		private readonly _fileSystemService: IFileSystemService,
 		private readonly _workspaceService: IWorkspaceService,

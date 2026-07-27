@@ -3,14 +3,14 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ConfigKey, IConfigurationService } from '../platform/configuration/common/configurationService';
-import { IVSCodeExtensionContext } from '../platform/extContext/common/extensionContext';
-import { IFileSystemService } from '../platform/filesystem/common/fileSystemService';
-import { IFetcherService } from '../platform/networking/common/fetcherService';
-import { ILogService } from '../platform/log/common/logService';
-import { IWorkspaceService } from '../platform/workspace/common/workspaceService';
-import { Disposable } from '../util/vs/base/common/lifecycle';
-import { IExtensionContribution } from '../extension/common/contributions';
+import { ConfigKey, IConfigurationService } from '../../platform/configuration/common/configurationService';
+import { IVSCodeExtensionContext } from '../../platform/extContext/common/extensionContext';
+import { IFileSystemService } from '../../platform/filesystem/common/fileSystemService';
+import { IFetcherService } from '../../platform/networking/common/fetcherService';
+import { ILogService } from '../../platform/log/common/logService';
+import { IWorkspaceService } from '../../platform/workspace/common/workspaceService';
+import { Disposable } from '../../util/vs/base/common/lifecycle';
+import { IExtensionContribution } from '../../extension/common/contributions';
 import { InferenceEngine } from './inferenceEngine';
 import { PolicyLoader } from './policyLoader';
 import { PolicyStore } from './policyStore';
@@ -127,13 +127,14 @@ export class GovernanceService extends Disposable implements IExtensionContribut
 			return;
 		}
 
-		// No cached or inferred standards. Only suggest starter controls when no platform policies exist.
+		// No cached or inferred standards. When no enterprise policies exist, defer standard
+		// selection to the developer's first chat prompt rather than popping a notification now.
 		this._policyStore.setStandards([]);
-		this._policyStore.setNeedsOnboarding(!hasEnterprisePolicies);
 		if (hasEnterprisePolicies) {
 			this._logService.trace('[Governance] platform policies active; no standards inferred, onboarding not required');
 		} else {
-			this._logService.trace('[Governance] no platform policy and no codebase standards inferred — onboarding suggestions required');
+			this._policyStore.setNeedsPromptInference(true);
+			this._logService.trace('[Governance] no platform policy and no codebase standards inferred — waiting for first prompt to suggest standards');
 		}
 	}
 }

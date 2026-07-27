@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { PromptElement, PromptSizing, SystemMessage, UserMessage } from '@vscode/prompt-tsx';
+import { GovernanceSystemPrompt } from '../../../../governance/common/governancePrompt';
 import { GenericBasePromptElementProps } from '../../../context/node/resolvers/genericPanelIntentInvocation';
 import { ToolName } from '../../../tools/common/toolNames';
 import { CopilotToolMode } from '../../../tools/common/toolsRegistry';
@@ -70,6 +71,7 @@ export class ExecutionSubagentPrompt extends PromptElement<ExecutionSubagentProm
 					...<br />
 					&lt;/final_answer&gt;<br />
 				</SystemMessage>
+				<GovernanceSystemPrompt />
 				<UserMessage priority={800}>
 					<TerminalStatePromptElement sessionId={conversation?.sessionId} />
 				</UserMessage>

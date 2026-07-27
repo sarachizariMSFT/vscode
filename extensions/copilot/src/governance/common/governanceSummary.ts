@@ -3,12 +3,13 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ActivePolicy, Standard } from './types';
+import { ActivePolicy, GovernanceDecision, Standard } from './types';
 import { PolicyStore } from './policyStore';
 
 const ICON_ENFORCED = '✓';
 const ICON_REDIRECTED = '→';
 const ICON_WARN = '⚠';
+const ICON_BLOCKED = '✗';
 const ICON_ENTERPRISE = '🛡';
 const ICON_INDIVIDUAL = '◉';
 
@@ -111,4 +112,57 @@ export function buildGovernanceSummaryMarkdown(store: PolicyStore): string | und
 	}
 
 	return blocks.length > 0 ? blocks.join('\n') : undefined;
+}
+
+/** Escapes markdown table-breaking pipe characters in free text. */
+function escapeCell(text: string): string {
+	return text.replace(/\|/g, '\\|');
+}
+
+/**
+ * Builds a truthful per-run governance summary from the enforcement decisions recorded
+ * during a single agent request. Returns undefined when nothing was blocked, flagged, or
+ * tracked.
+ *
+ * Format (plain markdown):
+ *   ---
+ *   🛡 **Governance enforced** — N blocked, N flagged
+ *   | | Policy | Target | Context |
+ *   ...
+ *   Context tracked: `flag1`, `flag2`
+ */
+export function buildRunSummary(decisions: readonly GovernanceDecision[], flags: readonly string[] = []): string | undefined {
+	if (decisions.length === 0 && flags.length === 0) {
+		return undefined;
+	}
+
+	const blocked = decisions.filter(d => d.outcome === 'blocked').length;
+	const flagged = decisions.filter(d => d.outcome === 'confirmed').length;
+
+	const tagParts: string[] = [];
+	if (blocked > 0) {
+		tagParts.push(`${blocked} blocked`);
+	}
+	if (flagged > 0) {
+		tagParts.push(`${flagged} flagged`);
+	}
+
+	const header = `${ICON_ENTERPRISE} **Governance enforced**${tagParts.length ? ' — ' + tagParts.join(', ') : ''}`;
+
+	const parts: string[] = ['\n---', header, ''];
+
+	if (decisions.length > 0) {
+		const rows = decisions.map(d => {
+			const icon = d.outcome === 'blocked' ? ICON_BLOCKED : ICON_WARN;
+			return `| ${icon} | ${escapeCell(d.policyId)} | ${d.ruleTarget} | ${escapeCell(d.context)} |`;
+		}).join('\n');
+		parts.push('| | Policy | Target | Context |', '|---|---|---|---|', rows);
+	}
+
+	if (flags.length > 0) {
+		const flagList = flags.map(f => `\`${escapeCell(f)}\``).join(', ');
+		parts.push('', `Context tracked: ${flagList}`);
+	}
+
+	return parts.join('\n');
 }

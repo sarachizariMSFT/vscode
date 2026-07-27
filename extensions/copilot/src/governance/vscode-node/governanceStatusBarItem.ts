@@ -4,13 +4,12 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { IConfigurationService, ConfigKey } from '../platform/configuration/common/configurationService';
-import { ILogService } from '../platform/log/common/logService';
-import { Disposable } from '../util/vs/base/common/lifecycle';
-import { IExtensionContribution } from '../extension/common/contributions';
-import { PolicyStore } from './policyStore';
-import { OPEN_PANEL_COMMAND_ID } from './GovernanceSidePanel';
-
+import { IConfigurationService, ConfigKey } from '../../platform/configuration/common/configurationService';
+import { ILogService } from '../../platform/log/common/logService';
+import { Disposable } from '../../util/vs/base/common/lifecycle';
+import { IExtensionContribution } from '../../extension/common/contributions';
+import { PolicyStore } from '../common/policyStore';
+import { OPEN_PANEL_COMMAND_ID } from './governanceSidePanel';
 /**
  * Governance status bar item (Phase 7).
  *

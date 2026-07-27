@@ -4,16 +4,15 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as vscode from 'vscode';
-import { IVSCodeExtensionContext } from '../platform/extContext/common/extensionContext';
-import { IFileSystemService } from '../platform/filesystem/common/fileSystemService';
-import { ILogService } from '../platform/log/common/logService';
-import { IWorkspaceService } from '../platform/workspace/common/workspaceService';
-import { Disposable } from '../util/vs/base/common/lifecycle';
-import { IExtensionContribution } from '../extension/common/contributions';
-import { InferenceEngine } from './inferenceEngine';
-import { PolicyStore } from './policyStore';
-import { Standard } from './types';
-
+import { IVSCodeExtensionContext } from '../../platform/extContext/common/extensionContext';
+import { IFileSystemService } from '../../platform/filesystem/common/fileSystemService';
+import { ILogService } from '../../platform/log/common/logService';
+import { IWorkspaceService } from '../../platform/workspace/common/workspaceService';
+import { Disposable } from '../../util/vs/base/common/lifecycle';
+import { IExtensionContribution } from '../../extension/common/contributions';
+import { InferenceEngine } from '../common/inferenceEngine';
+import { PolicyStore } from '../common/policyStore';
+import { Standard } from '../common/types';
 /** workspaceState key — must match the key in GovernanceService. */
 const STANDARDS_STATE_KEY = 'copilot.governance.inferredStandards';
 
@@ -51,9 +50,25 @@ export class GovernanceOnboardingContribution extends Disposable implements IExt
 			}
 		}));
 
+		// Prompt-driven path: when the developer submits their first chat message and no
+		// standards have been set yet, infer relevant standards from that message.
+		this._register(this._policyStore.onFirstPrompt(prompt => {
+			void this._suggestFromPrompt(prompt);
+		}));
+
 		this._register(vscode.commands.registerCommand(SETUP_COMMAND_ID, () => {
 			void this._runFlow();
 		}));
+	}
+
+	// -----------------------------------------------------------------------
+	// Prompt-driven standard suggestion (triggered by first chat message)
+	// -----------------------------------------------------------------------
+
+	private async _suggestFromPrompt(prompt: string): Promise<void> {
+		this._logService.trace(`[Governance] Inferring standards from first prompt (${prompt.length} chars)`);
+		const standards = InferenceEngine.scanFromPrompt(prompt);
+		await this._acceptFlow(standards);
 	}
 
 	// -----------------------------------------------------------------------

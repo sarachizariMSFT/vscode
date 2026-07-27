@@ -4,8 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { BasePromptElementProps, PromptElement, PromptElementProps, PromptSizing, SystemMessage } from '@vscode/prompt-tsx';
-import { ConfigKey, IConfigurationService } from '../platform/configuration/common/configurationService';
-import { GovernanceConfig, GuardrailMode } from './types';
+import { IConfigurationService } from '../../platform/configuration/common/configurationService';
+import { readGovernanceConfig } from './governanceConfig';
 import { PolicyStore } from './policyStore';
 import { buildGovernanceBlock } from './promptInjector';
 
@@ -28,33 +28,16 @@ export class GovernanceSystemPrompt extends PromptElement<BasePromptElementProps
 	}
 
 	render(_state: void, _sizing: PromptSizing) {
-		const enabled = this._configurationService.getConfig(ConfigKey.Governance.Enabled);
-		if (!enabled) {
+		const config = readGovernanceConfig(this._configurationService);
+		if (!config.enabled) {
 			return null;
 		}
 
-		const config = this._buildConfig();
 		const block = buildGovernanceBlock(PolicyStore.getInstance(), config);
 		if (!block) {
 			return null;
 		}
 
 		return <SystemMessage priority={700}>{block}</SystemMessage>;
-	}
-
-	private _buildConfig(): GovernanceConfig {
-		return {
-			enabled: true,
-			mode: this._configurationService.getConfig(ConfigKey.Governance.Mode) as GuardrailMode,
-			policyUrl: this._configurationService.getConfig(ConfigKey.Governance.PolicyUrl),
-			autoFixSafeIssues: this._configurationService.getConfig(ConfigKey.Governance.AutoFixSafeIssues),
-			showDiffSummaryAfterEdits: this._configurationService.getConfig(ConfigKey.Governance.ShowDiffSummaryAfterEdits),
-			includeRationaleInResponses: this._configurationService.getConfig(ConfigKey.Governance.IncludeRationaleInResponses),
-			rateLimits: {
-				enabled: this._configurationService.getConfig(ConfigKey.Governance.RateLimitsEnabled),
-				maxFilesPerTask: this._configurationService.getConfig(ConfigKey.Governance.RateLimitsMaxFilesPerTask),
-				maxToolCallsPerRun: this._configurationService.getConfig(ConfigKey.Governance.RateLimitsMaxToolCallsPerRun),
-			},
-		};
 	}
 }

@@ -28,6 +28,12 @@ export function buildEnterpriseBlock(policies: readonly ActivePolicy[], config: 
 		policyList,
 	];
 
+	// Explain contextual enforcement so the model adapts rather than blindly retrying a blocked call.
+	const hasContextualRules = policies.some(p => p.rules?.some(r => r.when !== undefined || r.sets !== undefined));
+	if (hasContextualRules) {
+		lines.push('', 'Some policies are contextual: they activate based on earlier actions in this session (for example, after a sensitive file has been read). If a tool call is blocked partway through a task, it may be a consequence of an earlier action rather than the call itself — adapt your approach instead of retrying the same call.');
+	}
+
 	if (config.includeRationaleInResponses) {
 		lines.push('', 'After completing the task, include a "Guardrails applied" section listing which policies were applied and any redirections made. Keep explanations concise (one sentence per policy).');
 	}

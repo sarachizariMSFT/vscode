@@ -25,6 +25,7 @@ import { isDefined, isString } from '../../../../util/vs/base/common/types';
 import { URI } from '../../../../util/vs/base/common/uri';
 import { IInstantiationService } from '../../../../util/vs/platform/instantiation/common/instantiation';
 import { ChatRequestEditedFileEventKind, Position, Range } from '../../../../vscodeTypes';
+import { GovernanceSystemPrompt } from '../../../../governance/common/governancePrompt';
 import { GenericBasePromptElementProps } from '../../../context/node/resolvers/genericPanelIntentInvocation';
 import { ChatVariablesCollection, extractDebugTargetSessionIds, isCustomizationsIndex } from '../../../prompt/common/chatVariablesCollection';
 import { CustomizationsIndexMetadata, getGlobalContextCacheKey, GlobalContextMessageMetadata, RenderedUserMessageMetadata, Turn } from '../../../prompt/common/conversation';
@@ -126,6 +127,7 @@ export class AgentPrompt extends PromptElement<AgentPromptProps> {
 			{hasMemoryTool && <SystemMessage>
 				<MemoryInstructionsPrompt />
 			</SystemMessage>}
+			<GovernanceSystemPrompt />
 		</>;
 		const isAutopilot = this.props.promptContext.request?.permissionLevel === 'autopilot';
 		const sessionResource = this.props.promptContext.request?.sessionResource;

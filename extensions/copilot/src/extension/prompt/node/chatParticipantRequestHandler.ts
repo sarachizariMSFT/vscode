@@ -46,6 +46,7 @@ import { IDocumentContext } from './documentContext';
 import { IntentDetector } from './intentDetector';
 import { CommandDetails } from './intentRegistry';
 import { IIntent } from './intents';
+import { PolicyStore } from '../../../governance/common/policyStore';
 
 export interface IChatAgentArgs {
 	agentName: string;
@@ -226,6 +227,12 @@ export class ChatParticipantRequestHandler {
 			// sanitize the variables of all requests
 			// this is done here because all intents must honor ignored files
 			this.request = await this.sanitizeVariables();
+
+			// First message in this session: notify governance so it can suggest
+			// prompt-relevant standards (non-blocking, one-shot per session).
+			if (this.rawHistory.length === 0) {
+				PolicyStore.getInstance().notifyFirstPrompt(this.request.prompt);
+			}
 
 			const command = this.chatAgentArgs.intentId ?
 				this._commandService.getCommand(this.chatAgentArgs.intentId, this.location) :

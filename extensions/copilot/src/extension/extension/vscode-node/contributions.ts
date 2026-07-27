@@ -52,11 +52,11 @@ import { SetupTestsContribution } from '../../testing/vscode/setupTestContributi
 import { ToolsContribution } from '../../tools/vscode-node/tools';
 import { OTelChatDebugLogProviderContribution } from '../../trajectory/vscode-node/otelChatDebugLogProvider';
 import { InlineCompletionContribution } from '../../typescriptContext/vscode-node/languageContextService';
-import { GovernanceService } from '../../../governance/GovernanceService';
-import { GovernanceSidePanel } from '../../../governance/GovernanceSidePanel';
-import { GovernanceStatusBarItem } from '../../../governance/GovernanceStatusBarItem';
-import { GovernanceOnboardingContribution } from '../../../governance/GovernanceOnboardingContribution';
-import { InferenceModal } from '../../../governance/InferenceModal';
+import { GovernanceService } from '../../../governance/common/governanceService';
+import { GovernanceSidePanel } from '../../../governance/vscode-node/governanceSidePanel';
+import { GovernanceStatusBarItem } from '../../../governance/vscode-node/governanceStatusBarItem';
+import { GovernanceOnboardingContribution } from '../../../governance/vscode-node/governanceOnboardingContribution';
+import { InferenceModal } from '../../../governance/vscode-node/inferenceModal';
 import { NesRenameContribution } from '../../typescriptContext/vscode-node/nesRenameService';
 import * as workspaceIndexingContribution from '../../workspaceChunkSearch/vscode-node/workspaceChunkSearch.contribution';
 import { WorkspaceRecorderFeature } from '../../workspaceRecorder/vscode-node/workspaceRecorderFeature';

@@ -52,9 +52,9 @@ See our [wiki](https://github.com/microsoft/vscode/wiki/Feedback-Channels) for a
 
 ## GitHub Copilot Governance — Shift-Left Standards Enforcement
 
-> **Branch:** `sara/copilot-governance` · **Fork:** [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance)
+> **Branch:** `sara/copilot-governance-clean` · **Fork:** [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-clean)
 
-Silently enforces your org/team coding standards during every Copilot Chat agent run. Before Copilot generates code, governance rules are injected into the system prompt. After each response, a compact summary table shows which guardrails were applied — no popups, no blocking.
+Enforces your org/team coding standards during every Copilot Chat agent run. Before Copilot generates code, governance rules are injected into the system prompt. Structured rules are also enforced **deterministically** at the tool-call level — a denied command, tool, or file write is blocked before it runs. After each response, a compact summary table shows which guardrails were applied and which context was tracked — no popups for the silent (prompt-shaping) path.
 
 ### Two Modes
 
@@ -68,10 +68,13 @@ Silently enforces your org/team coding standards during every Copilot Chat agent
 - **Policy loader** — reads `.github/copilot-policies.json` or a remote URL
 - **Inference engine** — scans workspace to infer 5 coding standards (no file contents sent externally)
 - **Prompt injector** — prepends guardrails as a system message to every agent run
-- **Post-response summary** — plain markdown table after each agent response
+- **Deterministic enforcement** — evaluates every tool call, terminal command, and file write against structured rules before it runs; `deny` blocks, `warn` flags
+- **Contextual (stateful) rules** — rules can raise session flags (`sets`) and gate later actions on accumulated state (`when`), e.g. block outbound requests once a secret file has been read in the run
+- **Per-run rate limits** — cap tool calls and edited files per agent run
+- **Post-response summary** — plain markdown table after each agent response, including any tracked context flags
 - **Status bar badge** — `🛡 Guardrails N` (total active policies + standards, unified)
 - **Settings panel** — click the badge to toggle policies on/off or rescan
-- **9 settings** — `github.copilot.governance.*` config keys in VS Code settings
+- **Settings** — `github.copilot.governance.*` config keys in VS Code settings
 
 ### Install & Run
 
@@ -81,7 +84,7 @@ Requires building VS Code from source. **Prerequisites:** Node.js 20+, Git, acti
 # Clone this fork and check out the branch
 git clone https://github.com/sarachizariMSFT/vscode.git
 cd vscode
-git checkout sara/copilot-governance
+git checkout sara/copilot-governance-clean
 
 # Install dependencies (~5 min)
 npm install

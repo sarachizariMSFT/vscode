@@ -37,6 +37,29 @@
       "enforcement": "enforce",
       "category": "quality",
       "autoFix": false
+    },
+    {
+      "id": "SEC-CTX-1",
+      "label": "No outbound network after reading secrets",
+      "description": "Once a secret-bearing file has been read during a run, block outbound web requests for the rest of that run to prevent exfiltration.",
+      "scope": "org",
+      "enforcement": "enforce",
+      "category": "security",
+      "autoFix": false,
+      "rules": [
+        {
+          "target": "file",
+          "match": { "pathPattern": "(^|/)\\.env$|secrets|credentials" },
+          "action": "observe",
+          "sets": ["readSecrets"]
+        },
+        {
+          "target": "tool",
+          "match": { "toolName": "fetch_webpage" },
+          "action": "deny",
+          "when": { "flags": ["readSecrets"] }
+        }
+      ]
     }
   ],
   "rateLimits": {

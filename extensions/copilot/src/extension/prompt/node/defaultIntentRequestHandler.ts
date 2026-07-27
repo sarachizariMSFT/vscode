@@ -37,6 +37,8 @@ import { DisposableStore } from '../../../util/vs/base/common/lifecycle';
 import { mixin } from '../../../util/vs/base/common/objects';
 import { assertType, Mutable } from '../../../util/vs/base/common/types';
 import { IInstantiationService } from '../../../util/vs/platform/instantiation/common/instantiation';
+import { peekRunSession } from '../../../governance/common/governanceEnforcement';
+import { buildRunSummary } from '../../../governance/common/governanceSummary';
 import { ChatResponseMarkdownPart, ChatResponseProgressPart, ChatResponseTextEditPart, LanguageModelToolResult2 } from '../../../vscodeTypes';
 import { CodeBlocksMetadata, CodeBlockTrackingChatResponseStream } from '../../codeBlocks/node/codeBlockProcessor';
 import { CopilotInteractiveEditorResponse, InteractionOutcomeComputer } from '../../inlineChat/node/promptCraftingTypes';
@@ -169,6 +171,8 @@ export class DefaultIntentRequestHandler {
 				this.stream.markdown(HAS_IGNORED_FILES_MESSAGE);
 			}
 
+			this._appendGovernanceSummary();
+
 			return chatResult;
 		} catch (err) {
 			if (err instanceof ToolCallCancelledError) {
@@ -189,6 +193,21 @@ export class DefaultIntentRequestHandler {
 			const chatResult = { errorDetails: { message: errorMessage } };
 			this.turn.setResponse(TurnStatus.Error, { message: errorMessage, type: 'meta' }, undefined, chatResult);
 			return chatResult;
+		}
+	}
+
+	/**
+	 * Appends a per-run governance summary to the response stream when the current request
+	 * recorded any enforcement activity (blocked/flagged tool calls or tracked context flags).
+	 */
+	private _appendGovernanceSummary(): void {
+		const session = peekRunSession(this.request);
+		if (!session?.hasActivity()) {
+			return;
+		}
+		const summary = buildRunSummary(session.decisions, [...session.flags]);
+		if (summary) {
+			this.stream.markdown(summary);
 		}
 	}
 
