@@ -90,7 +90,7 @@ export function createCapiClientFetchedValue<T>(
 				headers: currentRequestOpts.headers ?? {},
 				method: currentRequestOpts.method ?? 'GET',
 				state: currentRequestOpts
-			};
+			} as any;
 		},
 		httpFetch: async (httpRequest) => {
 			const response = await capiClientService.makeRequest<Response>({

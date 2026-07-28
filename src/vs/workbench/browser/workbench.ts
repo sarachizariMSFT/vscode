@@ -307,7 +307,7 @@ export class Workbench extends Layout {
 			}
 		}
 
-		FontMeasurements.readFontInfo(mainWindow, createBareFontInfoFromRawSettings(configurationService.getValue('editor'), PixelRatio.getInstance(mainWindow).value));
+		FontMeasurements.readFontInfo(mainWindow, createBareFontInfoFromRawSettings(configurationService.getValue('editor') ?? {}, PixelRatio.getInstance(mainWindow).value));
 	}
 
 	private storeFontInfo(storageService: IStorageService): void {

@@ -1,0 +1,42 @@
+{
+	"source": "inferred",
+	"policies": [
+		{
+			"id": "SEC-TERM-1",
+			"label": "No destructive Git or shell commands",
+			"description": "Blocks force pushes, hard resets, and recursive deletes.",
+			"enforcement": "enforce",
+			"category": "security",
+			"rules": [
+				{
+					"target": "terminal",
+					"match": {
+						"commandPattern": "git\\s+push\\b.*(--force\\b|-f\\b)|git\\s+reset\\s+--hard|\\brm\\s+-rf\\b|git\\s+clean\\s+-[a-z]*f"
+					},
+					"action": "deny"
+				}
+			]
+		},
+		{
+			"id": "SEC-CTX-1",
+			"label": "No outbound network after reading secrets",
+			"description": "Once a secret-bearing file is read in a run, block outbound web requests for the rest of that run.",
+			"enforcement": "enforce",
+			"category": "security",
+			"rules": [
+				{
+					"target": "file",
+					"match": { "pathPattern": "(^|/)\\.env$|secrets|credentials" },
+					"action": "observe",
+					"sets": ["readSecrets"]
+				},
+				{
+					"target": "tool",
+					"match": { "toolName": "fetch_webpage" },
+					"action": "deny",
+					"when": { "flags": ["readSecrets"] }
+				}
+			]
+		}
+	]
+}

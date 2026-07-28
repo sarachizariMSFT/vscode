@@ -706,7 +706,7 @@ export class Workbench extends Disposable implements IAgentWorkbenchLayoutServic
 			}
 		}
 
-		FontMeasurements.readFontInfo(mainWindow, createBareFontInfoFromRawSettings(configurationService.getValue('editor'), PixelRatio.getInstance(mainWindow).value));
+		FontMeasurements.readFontInfo(mainWindow, createBareFontInfoFromRawSettings(configurationService.getValue('editor') ?? {}, PixelRatio.getInstance(mainWindow).value));
 	}
 
 	private storeFontInfo(storageService: IStorageService): void {

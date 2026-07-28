@@ -61,6 +61,8 @@ function mapTaskStateToSessionState(state: AgentTaskState): SessionInfo['state']
 		case 'timed_out':
 		case 'cancelled':
 			return 'failed';
+		default:
+			return 'in_progress';
 	}
 }
 
@@ -558,7 +560,7 @@ export class TaskApiHttpClient implements ITaskApiClient {
 			init.body = JSON.stringify(opts.body);
 		}
 		const response = await this._capiClientService.makeRequest<Response>(init, {
-			type: RequestType.AgentTask,
+			type: 'AgentTask' as RequestType,
 			action,
 			...(opts.owner !== undefined && { owner: opts.owner }),
 			...(opts.repo !== undefined && { repo: opts.repo }),

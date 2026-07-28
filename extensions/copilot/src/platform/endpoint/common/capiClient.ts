@@ -33,9 +33,9 @@ export abstract class BaseCAPIClientService extends CAPIClient implements ICAPIC
 			sessionId: envService.sessionId,
 			vscodeVersion: envService.vscodeVersion,
 			buildType: envService.getBuildType(),
-			name: envService.getName(),
-			version: envService.getVersion(),
-		}, LICENSE_AGREEMENT, fetcherService, hmac, integrationId);
+			name: envService.getName() ?? '',
+			version: envService.getVersion() ?? '',
+		}, LICENSE_AGREEMENT ?? '', fetcherService, hmac ?? '', integrationId ?? '');
 	}
 
 	override makeRequest<T>(request: MakeRequestOptions, requestMetadata: RequestMetadata): Promise<T> {

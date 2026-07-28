@@ -42,7 +42,7 @@ export class DomainService extends Disposable implements IDomainService {
 		}
 	}
 
-	private _processCAPIModuleChange(token: CopilotToken | undefined): void {
+	private async _processCAPIModuleChange(token: CopilotToken | undefined): Promise<void> {
 		let capiConfigUrl = this._configurationService.getConfig(ConfigKey.Shared.DebugOverrideCAPIUrl);
 		if (capiConfigUrl && capiConfigUrl.endsWith('/')) {
 			capiConfigUrl = capiConfigUrl.slice(0, -1);
@@ -61,7 +61,7 @@ export class DomainService extends Disposable implements IDomainService {
 			},
 			sku: token?.sku || 'unknown',
 		};
-		const domainsChanged = this._capiClientService.updateDomains(moduleToken, enterpriseValue);
+		const domainsChanged = await this._capiClientService.updateDomains(moduleToken, enterpriseValue);
 		if (domainsChanged.capiUrlChanged || domainsChanged.proxyUrlChanged || domainsChanged.telemetryUrlChanged || domainsChanged.dotcomUrlChanged) {
 			this._onDidChangeDomains.fire({
 				capiUrlChanged: domainsChanged.capiUrlChanged,
@@ -75,7 +75,7 @@ export class DomainService extends Disposable implements IDomainService {
 
 
 	private _processCopilotToken(token: CopilotToken | undefined): void {
-		this._processCAPIModuleChange(token);
+		void this._processCAPIModuleChange(token);
 	}
 
 }
