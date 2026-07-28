@@ -54,7 +54,7 @@ See our [wiki](https://github.com/microsoft/vscode/wiki/Feedback-Channels) for a
 
 > **Branch:** `sara/copilot-governance-inline` · **Fork:** [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-inline)
 
-Enforces your org/team coding standards during every Copilot Chat agent run. Before Copilot generates code, governance rules are injected into the system prompt. Structured rules are also enforced **deterministically** at the tool-call level — a denied command, tool, or file write is blocked before it runs. After each response, a compact summary table shows which guardrails were applied and which context was tracked — no popups for the silent (prompt-shaping) path.
+Enforces your org/team coding standards during every Copilot Chat agent run. Before Copilot generates code, governance rules are injected into the system prompt. Structured rules are also enforced **deterministically** at the tool-call level — a denied command, tool, or file write is blocked before it runs. After each response, a compact summary table shows which guardrails were applied and which context was tracked. In **Enforce** mode a restricted step is blocked and Copilot offers a compliant alternative for you to approve before proceeding; in **Warn** mode Copilot applies a compliant fix silently and flags it in the summary.
 
 ### Two Modes
 

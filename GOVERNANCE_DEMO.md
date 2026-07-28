@@ -3,7 +3,7 @@
 > **Branch:** `sara/copilot-governance-inline` on [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-inline)
 > **Feature:** Shift-left standards enforcement built into Copilot Chat
 
-Copilot Governance silently applies your org or personal coding standards during every agent run — no gates, no interruptions. It shapes the output, then explains what it did.
+Copilot Governance applies your org or personal coding standards during every agent run. In **Warn** mode it shapes the output silently and explains what it did afterward; in **Enforce** mode it blocks any restricted step and offers a compliant alternative for you to approve before proceeding.
 
 ---
 
@@ -75,7 +75,7 @@ Drop a `.github/copilot-policies.json` file into the root of any workspace you o
 **What to look for:**
 1. Status bar shows `⚖️ Guardrails 3` within ~2 seconds of opening the workspace
 2. Send any agent request (e.g. "add a login function that stores the password")
-3. Copilot silently redirects to a compliant implementation
+3. In **Enforce** mode Copilot blocks the restricted step and offers a compliant alternative for you to approve before proceeding; in **Warn** mode it silently redirects to a compliant implementation
 4. A `🛡 Guardrails applied` summary appears at the bottom of the response
 5. Click the status bar badge to open Copilot Chat's inline Guardrails picker — switch mode and toggle policies
 
@@ -185,7 +185,7 @@ All settings live under `github.copilot.governance.*` in VS Code settings:
 | Setting | Default | Description |
 |---|---|---|
 | `enabled` | `true` | Master switch |
-| `mode` | `enforce` | `enforce` = silent fix; `warn` = advisory comment |
+| `mode` | `enforce` | `enforce` = block the restricted step and offer a compliant alternative to approve; `warn` = silently apply a compliant fix and flag it |
 | `policyUrl` | `""` | Remote URL for policy JSON (enterprise) |
 | `autoFixSafeIssues` | `true` | Auto-apply fixes that don't change intent |
 | `includeRationaleInResponses` | `true` | Copilot explains governance decisions |
@@ -215,7 +215,7 @@ Beyond the status bar badge, governance is controllable directly from the chat c
 
 Click the chip to open a dropdown with three groups:
 
-- **Mode** — switch between **Enforce** (block violations) and **Warn only** (allow but flag). Writes `github.copilot.governance.mode`.
+- **Mode** — switch between **Enforce** (block violations, then offer a compliant alternative for you to approve) and **Warn only** (silently apply a compliant fix and flag it). Writes `github.copilot.governance.mode`.
 - **Policies** — every active policy from `.github/copilot-policies.json` with an inline on/off switch. Turning one off adds its id to `github.copilot.governance.disabledPolicies` so the engine stops enforcing it; the manifest file is left untouched.
 - **Recommended** — guardrails that aren't active yet, split into **From this workspace** (inferred from a file/folder scan) and **From your prompt** (learned live from what you type in the composer). Each row has a **＋**, plus an **Add all N recommended** shortcut.
 
