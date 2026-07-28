@@ -17,22 +17,9 @@ export class PolicyStore {
 	private _disabledPolicyIds = new Set<string>();
 	private _activePolicies: ActivePolicy[] = [];
 	private _activeStandards: Standard[] = [];
-	private _needsOnboarding = false;
-	private _needsPromptInference = false;
 
 	private readonly _onDidChange = new Emitter<void>();
 	readonly onDidChange: Event<void> = this._onDidChange.event;
-
-	private readonly _onNeedsOnboardingChanged = new Emitter<boolean>();
-	/** Fires when the onboarding-required flag changes (Phase 5 listens to this). */
-	readonly onNeedsOnboardingChanged: Event<boolean> = this._onNeedsOnboardingChanged.event;
-
-	private readonly _onFirstPrompt = new Emitter<string>();
-	/**
-	 * Fires once, with the first chat prompt, when governance is waiting to suggest
-	 * standards based on developer intent. Consumed by GovernanceOnboardingContribution.
-	 */
-	readonly onFirstPrompt: Event<string> = this._onFirstPrompt.event;
 
 	static getInstance(): PolicyStore {
 		if (!PolicyStore._instance) {
@@ -54,19 +41,6 @@ export class PolicyStore {
 		return this._activeStandards;
 	}
 
-	/** True when no enterprise policy and no accepted standards exist yet — Phase 5 reacts to this. */
-	get needsOnboarding(): boolean {
-		return this._needsOnboarding;
-	}
-
-	/**
-	 * True when no policies and no standards exist and the system is waiting for the
-	 * developer's first prompt to infer relevant standards.
-	 */
-	get needsPromptInference(): boolean {
-		return this._needsPromptInference;
-	}
-
 	/**
 	 * Load policies from the enterprise policy file or remote URL.
 	 * Policies are stored as `ActivePolicy` with an initial status of `'applied'`.
@@ -81,27 +55,6 @@ export class PolicyStore {
 	setStandards(standards: readonly Standard[]): void {
 		this._activeStandards = standards.slice();
 		this._onDidChange.fire();
-	}
-
-	setNeedsOnboarding(value: boolean): void {
-		if (this._needsOnboarding !== value) {
-			this._needsOnboarding = value;
-			this._onNeedsOnboardingChanged.fire(value);
-		}
-	}
-
-	setNeedsPromptInference(value: boolean): void {
-		this._needsPromptInference = value;
-	}
-
-	/**
-	 * Called by the chat pipeline on the first user message. Fires `onFirstPrompt` once,
-	 * then clears the flag so subsequent calls are no-ops.
-	 */
-	notifyFirstPrompt(prompt: string): void {
-		if (!this._needsPromptInference) { return; }
-		this._needsPromptInference = false;
-		this._onFirstPrompt.fire(prompt);
 	}
 
 	togglePolicy(id: string): void {

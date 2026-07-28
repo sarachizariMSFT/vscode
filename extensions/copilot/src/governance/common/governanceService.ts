@@ -127,7 +127,6 @@ export class GovernanceService extends Disposable implements IExtensionContribut
 		const cached = this._extensionContext.workspaceState.get<Standard[]>(STANDARDS_STATE_KEY);
 		if (cached && cached.length > 0) {
 			this._policyStore.setStandards(cached);
-			this._policyStore.setNeedsOnboarding(false);
 			this._logService.trace(`[Governance] loaded ${cached.length} previously accepted inferred standards from workspaceState`);
 			return;
 		}
@@ -137,19 +136,17 @@ export class GovernanceService extends Disposable implements IExtensionContribut
 		const inferred = scanResult.inferredStandards;
 		if (inferred.length > 0) {
 			this._policyStore.setStandards(inferred);
-			this._policyStore.setNeedsOnboarding(false);
 			this._logService.trace(`[Governance] inferred ${inferred.length} standards from codebase and activated unified governance`);
 			return;
 		}
 
-		// No cached or inferred standards. When no enterprise policies exist, defer standard
-		// selection to the developer's first chat prompt rather than popping a notification now.
+		// No cached or inferred standards. Recommendations surface inline in the Guardrails
+		// chip; nothing to queue here.
 		this._policyStore.setStandards([]);
 		if (hasEnterprisePolicies) {
-			this._logService.trace('[Governance] platform policies active; no standards inferred, onboarding not required');
+			this._logService.trace('[Governance] platform policies active; no standards inferred');
 		} else {
-			this._policyStore.setNeedsPromptInference(true);
-			this._logService.trace('[Governance] no platform policy and no codebase standards inferred — waiting for first prompt to suggest standards');
+			this._logService.trace('[Governance] no platform policy and no codebase standards inferred — recommendations surface inline');
 		}
 	}
 }
