@@ -1131,6 +1131,8 @@ export namespace ConfigKey {
 		export const RateLimitsMaxFilesPerTask = defineSetting<number>('governance.rateLimits.maxFilesPerTask', ConfigType.Simple, 10);
 		/** Maximum number of tool calls per agent run (requires rateLimits.enabled). */
 		export const RateLimitsMaxToolCallsPerRun = defineSetting<number>('governance.rateLimits.maxToolCallsPerRun', ConfigType.Simple, 20);
+		/** Ids of policies the developer has turned off from the inline Guardrails picker. */
+		export const DisabledPolicies = defineSetting<string[]>('governance.disabledPolicies', ConfigType.Simple, []);
 	}
 }
 

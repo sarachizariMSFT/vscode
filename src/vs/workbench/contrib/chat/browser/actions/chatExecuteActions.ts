@@ -502,6 +502,46 @@ export class OpenPermissionPickerAction extends Action2 {
 	}
 }
 
+export class OpenGuardrailsPickerAction extends Action2 {
+	static readonly ID = 'workbench.action.chat.openGuardrailsPicker';
+
+	constructor() {
+		super({
+			id: OpenGuardrailsPickerAction.ID,
+			title: localize2('interactive.openGuardrailsPicker.label', "Open Guardrails Picker"),
+			tooltip: localize('setGuardrails', "Manage Guardrails"),
+			category: CHAT_CATEGORY,
+			f1: false,
+			precondition: ChatContextKeys.enabled,
+			menu: {
+				id: MenuId.ChatInputSecondary,
+				order: 2,
+				group: 'navigation',
+				when:
+					ContextKeyExpr.and(
+						ChatContextKeys.enabled,
+						ChatContextKeys.location.isEqualTo(ChatAgentLocation.Chat),
+						ChatContextKeys.chatModeKind.notEqualsTo(ChatModeKind.Ask),
+						ChatContextKeys.inQuickChat.negate(),
+						ContextKeyExpr.or(
+							ChatContextKeys.lockedToCodingAgent.negate(),
+							ChatContextKeys.lockedCodingAgentId.isEqualTo(AgentSessionProviders.Background),
+							ChatContextKeys.lockedCodingAgentId.isEqualTo(AgentSessionProviders.Claude),
+						),
+					)
+			}
+		});
+	}
+
+	override async run(accessor: ServicesAccessor): Promise<void> {
+		const widgetService = accessor.get(IChatWidgetService);
+		const widget = widgetService.lastFocusedWidget;
+		if (widget) {
+			widget.input.openGuardrailsPicker();
+		}
+	}
+}
+
 export class OpenModePickerAction extends Action2 {
 	static readonly ID = 'workbench.action.chat.openModePicker';
 
@@ -1232,6 +1272,7 @@ export function registerChatExecuteActions(): DisposableStore {
 	store.add(registerAction2(SwitchToNextPinnedModelAction));
 	store.add(registerAction2(OpenModelPickerAction));
 	store.add(registerAction2(OpenPermissionPickerAction));
+	store.add(registerAction2(OpenGuardrailsPickerAction));
 	store.add(registerAction2(OpenModePickerAction));
 	store.add(registerAction2(OpenSessionTargetPickerAction));
 	store.add(registerAction2(OpenDelegationPickerAction));

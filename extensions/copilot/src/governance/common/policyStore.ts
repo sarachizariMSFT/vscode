@@ -119,6 +119,22 @@ export class PolicyStore {
 		return !this._disabledPolicyIds.has(id);
 	}
 
+	/**
+	 * Replace the set of disabled policy ids wholesale. Used to bridge the
+	 * `github.copilot.governance.disabledPolicies` setting (written by the inline
+	 * Guardrails picker) into the store so enforcement honors it.
+	 */
+	setDisabledPolicyIds(ids: readonly string[]): void {
+		const next = new Set(ids);
+		const changed = next.size !== this._disabledPolicyIds.size || [...next].some(id => !this._disabledPolicyIds.has(id));
+		if (!changed) {
+			return;
+		}
+		this._disabledPolicyIds = next;
+		this._activePolicies = this._allPolicies.filter(p => !this._disabledPolicyIds.has(p.id));
+		this._onDidChange.fire();
+	}
+
 	toggleStandard(id: string): void {
 		const standard = this._activeStandards.find(s => s.id === id);
 		if (standard) {

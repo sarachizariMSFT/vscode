@@ -69,11 +69,26 @@ export class GovernanceService extends Disposable implements IExtensionContribut
 		this._register(watcher.onDidCreate(() => void this._refreshGovernanceState(loader)));
 		this._register(watcher.onDidChange(() => void this._refreshGovernanceState(loader)));
 		this._register(watcher.onDidDelete(() => void this._refreshGovernanceState(loader)));
+
+		// Bridge the inline Guardrails picker's per-policy toggles (stored in the
+		// `github.copilot.governance.disabledPolicies` setting) into the policy store.
+		this._register(this._configurationService.onDidChangeConfiguration(e => {
+			if (e.affectsConfiguration('github.copilot.governance.disabledPolicies')) {
+				this._applyDisabledPoliciesFromConfig();
+			}
+		}));
 	}
 
 	private async _refreshGovernanceState(loader: PolicyLoader): Promise<void> {
 		const hasEnterprisePolicies = await this._loadPolicies(loader);
+		this._applyDisabledPoliciesFromConfig();
 		await this._loadOrQueueInference(hasEnterprisePolicies);
+	}
+
+	/** Re-applies the disabled-policy set from configuration onto the (freshly loaded) policy store. */
+	private _applyDisabledPoliciesFromConfig(): void {
+		const disabled = this._configurationService.getConfig(ConfigKey.Governance.DisabledPolicies);
+		this._policyStore.setDisabledPolicyIds(Array.isArray(disabled) ? disabled : []);
 	}
 
 	/**

@@ -3297,6 +3297,14 @@
             "default": 20,
             "description": "Maximum number of tool calls Copilot may make in a single agent run (requires rateLimits.enabled)."
           },
+          "github.copilot.governance.disabledPolicies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "description": "Ids of governance policies the developer has turned off from the inline Guardrails picker. Disabled policies are not enforced."
+          },
           "github.copilot.chat.backgroundAgent.enabled": {
             "type": "boolean",
             "default": true,

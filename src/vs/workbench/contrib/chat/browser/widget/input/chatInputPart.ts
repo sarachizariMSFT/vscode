@@ -104,7 +104,7 @@ import { IChatResponseViewModel, isResponseVM } from '../../../common/model/chat
 import { IChatAgentService } from '../../../common/participants/chatAgents.js';
 import { ILanguageModelToolsService } from '../../../common/tools/languageModelToolsService.js';
 import { ChatHistoryNavigator } from '../../../common/widget/chatWidgetHistoryService.js';
-import { ChatSessionPrimaryPickerAction, ChatSubmitAction, IChatExecuteActionContext, OpenDelegationPickerAction, OpenModelPickerAction, OpenModePickerAction, OpenPermissionPickerAction, OpenSessionTargetPickerAction, OpenWorkspacePickerAction } from '../../actions/chatExecuteActions.js';
+import { ChatSessionPrimaryPickerAction, ChatSubmitAction, IChatExecuteActionContext, OpenDelegationPickerAction, OpenGuardrailsPickerAction, OpenModelPickerAction, OpenModePickerAction, OpenPermissionPickerAction, OpenSessionTargetPickerAction, OpenWorkspacePickerAction } from '../../actions/chatExecuteActions.js';
 import { AgentSessionProviders, AgentSessionTarget, getAgentSessionProvider } from '../../agentSessions/agentSessions.js';
 import { IAgentSessionsService } from '../../agentSessions/agentSessionsService.js';
 import { ChatAttachmentModel } from '../../attachments/chatAttachmentModel.js';
@@ -143,6 +143,7 @@ import { DelegationSessionPickerActionItem } from './delegationSessionPickerActi
 import { ModelPickerActionItem, IModelPickerDelegate } from './modelPicker/modelPickerActionItem.js';
 import { IModePickerDelegate, isModeConsideredBuiltIn, ModePickerActionItem } from './modePickerActionItem.js';
 import { IPermissionPickerDelegate, PermissionPickerActionItem } from './permissionPickerActionItem.js';
+import { GuardrailsPickerActionItem } from './guardrailsPickerActionItem.js';
 import { SessionTypePickerActionItem } from './sessionTargetPickerActionItem.js';
 import { WorkspacePickerActionItem } from './workspacePickerActionItem.js';
 import { ChatContextUsageWidget } from '../../widgetHosts/viewPane/chatContextUsageWidget.js';
@@ -510,6 +511,8 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 	private modeWidget: ModePickerActionItem | undefined;
 	private permissionWidget: PermissionPickerActionItem | undefined;
 	private readonly permissionWidgetDisposeListener = this._register(new MutableDisposable<IDisposable>());
+	private guardrailsWidget: GuardrailsPickerActionItem | undefined;
+	private readonly guardrailsWidgetDisposeListener = this._register(new MutableDisposable<IDisposable>());
 	private sessionTargetWidget: SessionTypePickerActionItem | undefined;
 	private delegationWidget: DelegationSessionPickerActionItem | undefined;
 	private readonly chatSessionPickerWidgets = this._register(new DisposableMap<string, ChatSessionPickerActionItem>());
@@ -1332,6 +1335,10 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 
 	public openPermissionPicker(): void {
 		this.permissionWidget?.show();
+	}
+
+	public openGuardrailsPicker(): void {
+		this.guardrailsWidget?.show();
 	}
 
 	public setPermissionLevel(level: ChatPermissionLevel): void {
@@ -2485,6 +2492,13 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 	 * @param userQuery If provided, this will be added to the history. Followups and programmatic queries should not be passed.
 	 */
 	async acceptInput(isUserQuery?: boolean, preserveFocus?: boolean): Promise<void> {
+		// Feed the submitted prompt into the Guardrails recommendation engine before the
+		// input is cleared, so relevant guardrails can be surfaced as the developer works.
+		const submittedPrompt = this._inputEditor?.getValue().trim();
+		if (submittedPrompt) {
+			this.guardrailsWidget?.learnFromPrompt(submittedPrompt);
+		}
+
 		if (isUserQuery) {
 			const userQuery = this.getCurrentInputState();
 			this.history.append(this._getFilteredEntry(userQuery));
@@ -3388,6 +3402,13 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 			// Update monospace state as the command prefix is typed/removed.
 			this.updateInputEditorFontFamily();
 
+			// Surface guardrail recommendations live as the developer types, so relevant
+			// guardrails can appear before the message is even submitted.
+			const typedPrompt = this._inputEditor.getValue().trim();
+			if (typedPrompt) {
+				this.guardrailsWidget?.learnFromPrompt(typedPrompt);
+			}
+
 			// Debounced sync to model for text changes
 			this._syncTextDebounced.schedule();
 		}));
@@ -3692,6 +3713,16 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 							this.permissionWidget = undefined;
 						}
 						this.permissionWidgetDisposeListener.clear();
+					});
+					return widget;
+				} else if (action.id === OpenGuardrailsPickerAction.ID && action instanceof MenuItemAction) {
+					const widget = this.instantiationService.createInstance(GuardrailsPickerActionItem, action, secondaryPickerOptions);
+					this.guardrailsWidget = widget;
+					this.guardrailsWidgetDisposeListener.value = widget.onDidDispose(() => {
+						if (this.guardrailsWidget === widget) {
+							this.guardrailsWidget = undefined;
+						}
+						this.guardrailsWidgetDisposeListener.clear();
 					});
 					return widget;
 				} else if (agentHostPickerProperty && action instanceof MenuItemAction) {
