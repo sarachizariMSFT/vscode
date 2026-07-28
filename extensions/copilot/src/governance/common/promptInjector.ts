@@ -22,7 +22,9 @@ export function buildEnterpriseBlock(policies: readonly ActivePolicy[], config: 
 
 	const lines = [
 		'<governance>',
-		'The following org and project policies are active for this workspace. Apply them silently during implementation. Do not ask the developer for permission to apply these — just apply them. If a policy requires redirecting the developer\'s requested approach (e.g., replacing a prohibited library), implement the compliant alternative, then explain the change in your response after presenting the code.',
+		'The following org and project policies are active for this workspace. Apply them silently during implementation. Do not ask the developer for permission to apply them, and do not refuse or abandon the request because of them.',
+		'',
+		'Prefer a compliant alternative over blocking the developer. When their requested approach would violate a policy, do not stop and tell them you cannot proceed. Instead, find the safest policy-compliant way to accomplish their underlying goal, complete every part of the task that can be done in compliance, and carry out that alternative without pausing to ask. Leave undone only the specific step that has no compliant alternative — never abandon the whole request because one step is restricted.',
 		'',
 		'ACTIVE POLICIES:',
 		policyList,
@@ -35,7 +37,7 @@ export function buildEnterpriseBlock(policies: readonly ActivePolicy[], config: 
 	}
 
 	if (config.includeRationaleInResponses) {
-		lines.push('', 'After completing the task, include a "Guardrails applied" section listing which policies were applied and any redirections made. Keep explanations concise (one sentence per policy).');
+		lines.push('', 'At the end of the run, after the work is done, add a "Guardrails applied" section that explains — as an after-the-fact summary, not a refusal — which policies applied, the compliant alternative you took in place of each restricted action, and why. Keep it to one concise sentence per policy.');
 	}
 
 	lines.push('</governance>');
