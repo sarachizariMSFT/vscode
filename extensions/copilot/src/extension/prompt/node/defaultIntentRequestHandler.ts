@@ -39,7 +39,7 @@ import { assertType, Mutable } from '../../../util/vs/base/common/types';
 import { IInstantiationService } from '../../../util/vs/platform/instantiation/common/instantiation';
 import { peekRunSession } from '../../../governance/common/governanceEnforcement';
 import { buildRunSummary } from '../../../governance/common/governanceSummary';
-import { ChatResponseMarkdownPart, ChatResponseProgressPart, ChatResponseTextEditPart, LanguageModelToolResult2 } from '../../../vscodeTypes';
+import { ChatResponseMarkdownPart, ChatResponseProgressPart, ChatResponseTextEditPart, LanguageModelToolResult2, MarkdownString } from '../../../vscodeTypes';
 import { CodeBlocksMetadata, CodeBlockTrackingChatResponseStream } from '../../codeBlocks/node/codeBlockProcessor';
 import { CopilotInteractiveEditorResponse, InteractionOutcomeComputer } from '../../inlineChat/node/promptCraftingTypes';
 import { formatHookErrorMessage, HookAbortError, isHookAbortError, processHookResults } from '../../intents/node/hookResultProcessor';
@@ -207,7 +207,9 @@ export class DefaultIntentRequestHandler {
 		}
 		const summary = buildRunSummary(session.decisions, [...session.flags]);
 		if (summary) {
-			this.stream.markdown(summary);
+			// Render with theme-icon support so the `$(law)` guardrails codicon in the header
+			// matches the inline Guardrails picker and status bar badge.
+			this.stream.markdown(new MarkdownString(summary, true));
 		}
 	}
 

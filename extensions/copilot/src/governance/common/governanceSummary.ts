@@ -12,6 +12,8 @@ const ICON_WARN = '⚠';
 const ICON_BLOCKED = '✗';
 const ICON_ENTERPRISE = '🛡';
 const ICON_INDIVIDUAL = '◉';
+/** Balance ("law") codicon — matches the inline Guardrails picker and status bar badge. Requires theme-icon rendering. */
+const ICON_GUARDRAILS = '$(law)';
 
 function policyIcon(status: ActivePolicy['status']): string {
 	switch (status) {
@@ -124,9 +126,9 @@ function escapeCell(text: string): string {
  * during a single agent request. Returns undefined when nothing was blocked, flagged, or
  * tracked.
  *
- * Format (plain markdown):
+ * Format (markdown with theme icons):
  *   ---
- *   🛡 **Governance enforced** — N blocked, N flagged
+ *   $(law) **Governance enforced** — N blocked, N flagged
  *   | | Policy | Target | Context |
  *   ...
  *   Context tracked: `flag1`, `flag2`
@@ -147,7 +149,7 @@ export function buildRunSummary(decisions: readonly GovernanceDecision[], flags:
 		tagParts.push(`${flagged} flagged`);
 	}
 
-	const header = `${ICON_ENTERPRISE} **Governance enforced**${tagParts.length ? ' — ' + tagParts.join(', ') : ''}`;
+	const header = `${ICON_GUARDRAILS} **Governance enforced**${tagParts.length ? ' — ' + tagParts.join(', ') : ''}`;
 
 	const parts: string[] = ['\n---', header, ''];
 

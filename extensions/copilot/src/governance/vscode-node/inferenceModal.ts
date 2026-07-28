@@ -63,11 +63,12 @@ function buildModalContent(): vscode.MarkdownString {
 		'',
 		'### Changing your governance',
 		'',
-		'Open the governance panel (`🛡 Guardrails` in the status bar) to toggle any inferred standard on or off. Changes take effect on the next agent request.',
+		'Open the governance panel (`$(law) Guardrails` in the status bar) to toggle any inferred standard on or off. Changes take effect on the next agent request.',
 	];
 
 	const md = new vscode.MarkdownString(lines.join('\n'));
 	md.isTrusted = true;
+	md.supportThemeIcons = true;
 	md.supportHtml = false;
 	return md;
 }
