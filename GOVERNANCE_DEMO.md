@@ -73,11 +73,11 @@ Drop a `.github/copilot-policies.json` file into the root of any workspace you o
 ```
 
 **What to look for:**
-1. Status bar shows `🛡 Guardrails 3` within ~2 seconds of opening the workspace
+1. Status bar shows `⚖️ Guardrails 3` within ~2 seconds of opening the workspace
 2. Send any agent request (e.g. "add a login function that stores the password")
 3. Copilot silently redirects to a compliant implementation
 4. A `🛡 Guardrails applied` summary appears at the bottom of the response
-5. Click the status bar badge to open the settings panel — toggle policies on/off
+5. Click the status bar badge to open Copilot Chat's inline Guardrails picker — switch mode and toggle policies
 
 ---
 
@@ -192,12 +192,15 @@ All settings live under `github.copilot.governance.*` in VS Code settings:
 
 ## What the status bar shows
 
+The badge matches the inline Guardrails chip's icon so the two read as one feature.
+
 | Badge | Meaning |
 |---|---|
-| `🛡 Guardrails N` | N total active items (policies + standards combined) |
+| `⚖️ Guardrails N` | Enforce mode — N total active items (policies + standards combined) |
+| `⚠️ Guardrails N` | Warn mode — same count, badge tinted so the mode is visible at a glance |
 | *(hidden)* | Governance disabled, store empty, or no workspace open |
 
-Click the badge to open the governance panel where you can toggle individual policies/standards and switch between Enforce and Warn mode.
+The badge is a status indicator, not a second control panel. Click it to open Copilot Chat and its inline Guardrails picker — the single place to switch mode, toggle policies, and accept recommendations.
 
 ---
 

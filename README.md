@@ -72,7 +72,7 @@ Enforces your org/team coding standards during every Copilot Chat agent run. Bef
 - **Contextual (stateful) rules** — rules can raise session flags (`sets`) and gate later actions on accumulated state (`when`), e.g. block outbound requests once a secret file has been read in the run
 - **Per-run rate limits** — cap tool calls and edited files per agent run
 - **Post-response summary** — plain markdown table after each agent response, including any tracked context flags
-- **Status bar badge** — `🛡 Guardrails N` (total active policies + standards, unified)
+- **Status bar badge** — `⚖️ Guardrails N` (total active policies + standards; matches the inline chip's icon, tints in Warn mode, and opens the inline picker on click)
 - **Inline Guardrails picker** — a Guardrails chip in the chat input toolbar to switch mode (Enforce/Warn), toggle individual policies on/off, and accept recommendations without leaving the composer
 - **Live recommendations** — guardrails inferred from a workspace scan and learned from your prompts as you type; new ones are flagged with an unread dot on the chip and a per-item dot in the menu, and accepting one writes it to `.github/copilot-policies.json`
 - **Settings panel** — click the badge to toggle policies on/off or rescan
