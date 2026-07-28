@@ -103,6 +103,7 @@ export class ChatEditorOptions extends Disposable {
 		// TODO shouldn't the setting keys be more specific?
 		const chatEditorConfig = this.configurationService.getValue<IChatConfiguration>('chat')?.editor;
 		const accessibilitySupport = this.configurationService.getValue<'auto' | 'off' | 'on'>('editor.accessibilitySupport');
+		const fontSize = chatEditorConfig?.fontSize ?? 13;
 		this._config = {
 			foreground: this.themeService.getColorTheme().getColor(this.foreground),
 			inputEditor: {
@@ -111,16 +112,16 @@ export class ChatEditorOptions extends Disposable {
 			},
 			resultEditor: {
 				backgroundColor: this.themeService.getColorTheme().getColor(this.resultEditorBackgroundColor),
-				fontSize: chatEditorConfig.fontSize,
-				fontFamily: chatEditorConfig.fontFamily === 'default' ? editorConfig.fontFamily : chatEditorConfig.fontFamily,
-				fontWeight: chatEditorConfig.fontWeight,
-				lineHeight: chatEditorConfig.lineHeight ? chatEditorConfig.lineHeight : ChatEditorOptions.lineHeightEm * chatEditorConfig.fontSize,
+				fontSize,
+				fontFamily: chatEditorConfig?.fontFamily === 'default' ? editorConfig?.fontFamily : chatEditorConfig?.fontFamily,
+				fontWeight: chatEditorConfig?.fontWeight ?? 'normal',
+				lineHeight: chatEditorConfig?.lineHeight ? chatEditorConfig.lineHeight : ChatEditorOptions.lineHeightEm * fontSize,
 				bracketPairColorization: {
 					enabled: this.configurationService.getValue<boolean>('editor.bracketPairColorization.enabled'),
 					independentColorPoolPerBracketType: this.configurationService.getValue<boolean>('editor.bracketPairColorization.independentColorPoolPerBracketType'),
 				},
-				wordWrap: chatEditorConfig.wordWrap,
-				fontLigatures: editorConfig.fontLigatures,
+				wordWrap: chatEditorConfig?.wordWrap ?? 'on',
+				fontLigatures: editorConfig?.fontLigatures,
 			}
 
 		};

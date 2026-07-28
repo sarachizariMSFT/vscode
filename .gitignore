@@ -48,3 +48,10 @@ dist
 .github/prompts/*.local.prompt.md
 .agents/skills/.local/
 .github/skills/.local/
+
+# Copilot Governance — local demo artifacts (not part of the feature)
+oss-launch.log
+.start/
+.github/copilot-policies.json
+.github/copilot-policies.*.json
+.github/copilot-policies.json.bak

@@ -1,0 +1,67 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+/*
+ * Compacts guardrail policy rows into a single line: the policy name on the
+ * left and an on/off switch on the right, instead of the default full-width
+ * toggle row. Scoped via the `guardrail-policy-row` class so it does not
+ * affect other consumers of the shared inline toggle.
+ */
+.action-widget .monaco-list-row.action.guardrail-policy-row.has-inline-toggle {
+	flex-wrap: nowrap;
+	align-content: center;
+	padding-right: 8px;
+}
+
+.action-widget .monaco-list-row.action.guardrail-policy-row .title {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	line-height: normal;
+}
+
+.action-widget .monaco-list-row.action.guardrail-policy-row .action-list-item-inline-toggle {
+	order: 0;
+	width: auto;
+	flex: 0 0 auto;
+	margin-left: auto;
+	padding-left: 8px;
+	padding-top: 0;
+}
+
+/* The switch position communicates on/off, so the textual label is redundant
+ * visually but kept in the DOM for screen readers. */
+.action-widget .monaco-list-row.action.guardrail-policy-row .action-list-item-inline-toggle .action-list-item-inline-toggle-label {
+	display: none;
+}
+
+/* Unread indicator: a small dot on the Guardrails chip when new recommendations
+ * have arrived (e.g. inferred from a chat prompt) but have not yet been viewed. */
+.guardrails-unread-dot {
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	margin-left: 3px;
+	vertical-align: top;
+	border-radius: 50%;
+	background-color: var(--vscode-activityBarBadge-background, var(--vscode-focusBorder));
+}
+
+/* Per-item unread indicator: a small dot after a recommendation's label so the
+ * developer can tell which entries are newly recommended (e.g. inferred from a
+ * chat prompt) even after the chip's own dot clears when the menu opens. It
+ * persists until the recommendation is added to the manifest. */
+.action-widget .monaco-list-row.action.guardrail-rec-new .title::after {
+	content: '';
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	margin-left: 6px;
+	vertical-align: middle;
+	border-radius: 50%;
+	background-color: var(--vscode-activityBarBadge-background, var(--vscode-focusBorder));
+}

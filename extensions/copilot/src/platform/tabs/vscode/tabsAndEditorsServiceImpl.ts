@@ -24,7 +24,12 @@ export class TabsAndEditorsServiceImpl implements ITabsAndEditorsService {
 
 	constructor() {
 		// Set the activeTabGroup as the most recently used
-		const updateActiveTabGroup = () => this._tabGroupsUseInfo.set(vscode.window.tabGroups.activeTabGroup, this._tabClock++);
+		const updateActiveTabGroup = () => {
+			const activeTabGroup = vscode.window.tabGroups.activeTabGroup;
+			if (activeTabGroup) {
+				this._tabGroupsUseInfo.set(activeTabGroup, this._tabClock++);
+			}
+		};
 
 		updateActiveTabGroup();
 		this._store.add(vscode.window.tabGroups.onDidChangeTabGroups(e => {

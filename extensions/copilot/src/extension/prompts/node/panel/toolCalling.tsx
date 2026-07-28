@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { RequestMetadata, RequestType } from '@vscode/copilot-api';
+import * as l10n from '@vscode/l10n';
 import { AssistantMessage, BasePromptElementProps, Chunk, IfEmpty, Image, JSONTree, PromptElement, PromptElementProps, PromptMetadata, PromptPiece, PromptSizing, TokenLimit, ToolCall, ToolMessage, useKeepWith, UserMessage } from '@vscode/prompt-tsx';
 import type { ChatParticipantToolToken, LanguageModelToolInvocationOptions, LanguageModelToolResult2, LanguageModelToolTokenizationOptions } from 'vscode';
 import { IAuthenticationService } from '../../../../platform/authentication/common/authentication';
@@ -40,6 +41,9 @@ import { toJsonSchema } from '../../../tools/common/toJsonSchema';
 import { ToolName } from '../../../tools/common/toolNames';
 import { CopilotToolMode } from '../../../tools/common/toolsRegistry';
 import { IToolsService } from '../../../tools/common/toolsService';
+import { readGovernanceConfig } from '../../../../governance/common/governanceConfig';
+import { enforceToolCall, EnforcementResult, getRunSession } from '../../../../governance/common/governanceEnforcement';
+import { PolicyStore } from '../../../../governance/common/policyStore';
 import { IChatDiskSessionResources } from '../../common/chatDiskSessionResources';
 import { IPromptEndpoint, PromptRenderer } from '../base/promptRenderer';
 import { Tag } from '../base/tag';
@@ -121,7 +125,11 @@ export class ChatToolCalls extends PromptElement<ChatToolCallsProps, void> {
 		const children: PromptElement[] = [];
 
 		// Don't include this when rendering and triggering summarization
-		const statefulMarker = round.statefulMarker && <StatefulMarkerContainer statefulMarker={{ modelId: this.promptEndpoint.model, marker: round.statefulMarker }} />;
+		const statefulMarker = round.statefulMarker && <StatefulMarkerContainer statefulMarker={{
+			modelId: this.promptEndpoint.model,
+			marker: round.statefulMarker,
+			summarizedAtRoundId: round.statefulMarkerSummarizedAtRoundId,
+		}} />;
 		// Backward compat: older persisted rounds use `phaseModelId` instead of `modelId`. Read both.
 		const roundModelId = round.modelId ?? (round as IToolCallRound & { phaseModelId?: string }).phaseModelId;
 		const sameModelAsEndpoint = roundModelId === this.promptEndpoint.model;
@@ -233,6 +241,7 @@ function buildToolResultElement(accessor: ServicesAccessor, props: ToolResultOpt
 	const chatHookService = accessor.get(IChatHookService);
 	const otelService = accessor.get(IOTelService);
 	const instantiationService = accessor.get(IInstantiationService);
+	const configurationService = accessor.get(IConfigurationService);
 	const tool = toolsService.getTool(props.toolCall.name);
 
 	async function getToolResult(sizing: PromptSizing) {
@@ -290,6 +299,11 @@ function buildToolResultElement(accessor: ServicesAccessor, props: ToolResultOpt
 					if (hookResult?.updatedInput) {
 						inputObj = hookResult.updatedInput;
 					}
+
+					// Deterministic governance enforcement — evaluate the (post-hook) tool call
+					// against active policies before it runs. A blocked call throws below and is
+					// surfaced to the model as a tool failure.
+					enforceGovernance(configurationService, promptContext, props.toolCall.name, inputObj);
 
 					const subAgentInvocationId = promptContext.request?.subAgentInvocationId;
 					// Capture the active trace context (from the invoke_agent span) so that
@@ -374,6 +388,70 @@ function buildToolResultElement(accessor: ServicesAccessor, props: ToolResultOpt
 		stripImages={props.stripImages}
 		sharedImageBudget={props.sharedImageBudget}
 	/>;
+}
+
+/**
+ * Evaluates a tool call against active governance policies before it runs, throwing a
+ * localized block message when the call is denied. A no-op when governance is disabled
+ * or no active policies exist.
+ */
+function enforceGovernance(configurationService: IConfigurationService, promptContext: IBuildPromptContext, toolName: string, inputObj: unknown): void {
+	const config = readGovernanceConfig(configurationService);
+	if (!config.enabled) {
+		return;
+	}
+	const policies = PolicyStore.getInstance().activePolicies;
+	if (policies.length === 0) {
+		return;
+	}
+
+	const input = inputObj as Record<string, unknown> | undefined;
+	const session = getRunSession(promptContext.request ?? promptContext);
+	const result = enforceToolCall(
+		{
+			toolName,
+			terminalCommand: toolName === ToolName.CoreRunInTerminal && typeof input?.['command'] === 'string' ? input['command'] : undefined,
+			// Covers read tools (read_file) and every edit tool, whose path field is always `filePath`.
+			filePath: _firstStringField(input, ['filePath', 'absolutePath', 'path']),
+			// Content lives under different keys per edit tool: create_file uses `content`,
+			// insert_edit uses `code`, replace_string uses `newString`. Reads carry no content.
+			fileContent: _firstStringField(input, ['content', 'code', 'newString', 'newContent']),
+		},
+		policies,
+		config,
+		session,
+	);
+	if (result.blocked) {
+		throw new Error(governanceBlockMessage(result));
+	}
+}
+
+/** Returns the first of `keys` present on `input` as a string, or undefined. */
+function _firstStringField(input: Record<string, unknown> | undefined, keys: readonly string[]): string | undefined {
+	if (!input) {
+		return undefined;
+	}
+	for (const key of keys) {
+		const value = input[key];
+		if (typeof value === 'string') {
+			return value;
+		}
+	}
+	return undefined;
+}
+
+/** Builds the localized message shown to the model when a tool call is blocked by governance. */
+function governanceBlockMessage(result: EnforcementResult): string {
+	switch (result.reason) {
+		case 'rate-limit-tools':
+			return l10n.t('Blocked by governance: this run reached its maximum number of tool calls.');
+		case 'rate-limit-files':
+			return l10n.t('Blocked by governance: this run reached its maximum number of edited files.');
+		default:
+			return result.policyId
+				? l10n.t('Blocked by governance policy "{0}". Do not retry this action. Take a policy-compliant alternative that still advances the user\'s goal, continue with the rest of the task, and explain the alternative in your "Guardrails applied" summary.', result.policyId)
+				: l10n.t('Blocked by governance policy. Do not retry this action. Take a policy-compliant alternative that still advances the user\'s goal, continue with the rest of the task, and explain the alternative in your "Guardrails applied" summary.');
+	}
 }
 
 const toolsCalledInParallel = new Set<ToolName>([
@@ -751,8 +829,7 @@ class PrimitiveToolResult<T extends IPrimitiveToolResultProps> extends PromptEle
 		@IAuthenticationService private readonly authService?: IAuthenticationService,
 		@ILogService private readonly logService?: ILogService,
 		@IImageService private readonly imageService?: IImageService,
-		@IConfigurationService private readonly configurationService?: IConfigurationService,
-		@IExperimentationService private readonly experimentationService?: IExperimentationService
+		@IConfigurationService private readonly configurationService?: IConfigurationService
 	) {
 		super(props);
 		this.linkedResources = this.props.content.filter((c): c is LanguageModelDataPart => c instanceof LanguageModelDataPart && c.mimeType === McpLinkedResourceToolResult.mimeType);
@@ -800,11 +877,11 @@ class PrimitiveToolResult<T extends IPrimitiveToolResultProps> extends PromptEle
 
 	protected async onImage(part: LanguageModelDataPart, _imageIndex?: number) {
 		if (!this.endpoint?.supportsVision) {
-			return '[Image content is not available because vision is not supported by the current model or is disabled by your organization.]';
+			return '[Image content is not available because vision is not supported by the current model.]';
 		}
 
-		const uploadsEnabled = this.configurationService && this.experimentationService
-			? this.configurationService.getExperimentBasedConfig(ConfigKey.EnableChatImageUpload, this.experimentationService)
+		const uploadsEnabled = this.configurationService
+			? this.configurationService.getConfig(ConfigKey.EnableChatImageUpload)
 			: false;
 
 		// Anthropic (from CAPI) currently does not support image uploads from tool calls.
@@ -897,7 +974,7 @@ export class ToolResult extends PrimitiveToolResult<IToolResultProps> {
 		@IExperimentationService private readonly _experimentationService: IExperimentationService,
 		@IChatDiskSessionResources private readonly diskSessionResources: IChatDiskSessionResources,
 	) {
-		super(props, endpoint, authService, _logService, imageService, _configurationService, _experimentationService);
+		super(props, endpoint, authService, _logService, imageService, _configurationService);
 	}
 
 	protected override async onTSX(part: JSONTree.PromptElementJSON): Promise<any> {

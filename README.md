@@ -48,6 +48,80 @@ please see the document [How to Contribute](https://github.com/microsoft/vscode/
 
 See our [wiki](https://github.com/microsoft/vscode/wiki/Feedback-Channels) for a description of each of these channels and information on some other available community-driven channels.
 
+---
+
+## GitHub Copilot Governance — Shift-Left Standards Enforcement
+
+> **Branch:** `sara/copilot-governance-inline` · **Fork:** [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-inline)
+
+Enforces your org/team coding standards during every Copilot Chat agent run. Before Copilot generates code, governance rules are injected into the system prompt. Structured rules are also enforced **deterministically** at the tool-call level — a denied command, tool, or file write is blocked before it runs. After each response, a compact summary table shows which guardrails were applied and which context was tracked — no popups for the silent (prompt-shaping) path.
+
+### Two Modes
+
+| Mode | How it activates | Source of rules |
+|---|---|---|
+| **Enterprise** | Drop `.github/copilot-policies.json` in your workspace | Your org's central policy file (local or remote URL) |
+| **Individual** | No policy file present → recommendations surface inline in the Guardrails chip | 5-signal workspace scan (test framework, `.env.example`, `tsconfig.json`, folder structure) |
+
+### What's Included
+
+- **Policy loader** — reads `.github/copilot-policies.json` or a remote URL
+- **Inference engine** — scans workspace to infer 5 coding standards (no file contents sent externally)
+- **Prompt injector** — prepends guardrails as a system message to every agent run
+- **Deterministic enforcement** — evaluates every tool call, terminal command, and file write against structured rules before it runs; `deny` blocks, `warn` flags
+- **Contextual (stateful) rules** — rules can raise session flags (`sets`) and gate later actions on accumulated state (`when`), e.g. block outbound requests once a secret file has been read in the run
+- **Per-run rate limits** — cap tool calls and edited files per agent run
+- **Post-response summary** — plain markdown table after each agent response, including any tracked context flags
+- **Status bar badge** — `⚖️ Guardrails N` (total active policies + standards; matches the inline chip's icon, tints in Warn mode, and opens the inline picker on click)
+- **Inline Guardrails picker** — a Guardrails chip in the chat input toolbar to switch mode (Enforce/Warn), toggle individual policies on/off, and accept recommendations without leaving the composer
+- **Live recommendations** — guardrails inferred from a workspace scan and learned from your prompts as you type; new ones are flagged with an unread dot on the chip and a per-item dot in the menu, and accepting one writes it to `.github/copilot-policies.json`
+- **Settings panel** — click the badge to toggle policies on/off or rescan
+- **Settings** — `github.copilot.governance.*` config keys in VS Code settings
+
+### Install & Run
+
+Requires building VS Code from source. **Prerequisites:** Node.js 20+, Git, active GitHub Copilot subscription.
+
+```bash
+# Clone this fork and check out the self-contained demo branch
+git clone https://github.com/sarachizariMSFT/vscode.git
+cd vscode
+git checkout sara/copilot-governance-inline
+
+# Install dependencies (~5 min)
+npm install
+
+# Launch pointed at the bundled demo workspace (Windows)
+scripts\code.bat .\governance-demo
+
+# Launch (macOS/Linux)
+scripts/code.sh ./governance-demo
+```
+
+Sign in to GitHub Copilot when prompted, then open the Chat view to try it. See [`governance-demo/README.md`](governance-demo/README.md) for the full step-by-step walkthrough.
+
+### Quick Test — Enterprise Mode
+
+1. Copy `extensions/copilot/src/governance/sample-copilot-policies.json` to `.github/copilot-policies.json` in any open workspace
+2. Open Copilot Chat in agent mode and ask it to write code
+3. The response ends with a guardrails summary table
+
+### Quick Test — Individual Mode
+
+1. Open a workspace with no `.github/copilot-policies.json`
+2. Open Copilot Chat and click the **Guardrails** chip — recommended standards appear under **From this workspace** (no pop-up)
+3. Click **＋** on a recommendation (or **Add all**) to activate it; they persist to workspace state
+4. Prefer a guided multi-select? Run **Runtime Governance: Setup Governance Standards** from the Command Palette
+
+### Quick Test — Inline Guardrails Picker
+
+1. Open the Copilot Chat input and click the **Guardrails** chip in the toolbar
+2. Switch between **Enforce** and **Warn**, and toggle policies on/off inline
+3. Type a prompt (e.g. "deploy infrastructure with Terraform") — matching guardrails surface under **From your prompt** with an unread dot
+4. Click **＋** on a recommendation (or **Add all**) to write it to `.github/copilot-policies.json`
+
+See [GOVERNANCE_DEMO.md](GOVERNANCE_DEMO.md) for the full walkthrough.
+
 ## Related Projects
 
 Many of the core components and extensions to VS Code live in their own repositories on GitHub. For example, the [node debug adapter](https://github.com/microsoft/vscode-node-debug) and the [mono debug adapter](https://github.com/microsoft/vscode-mono-debug) repositories are separate from each other. For a complete list, please visit the [Related Projects](https://github.com/microsoft/vscode/wiki/Related-Projects) page on our [wiki](https://github.com/microsoft/vscode/wiki).

@@ -1,0 +1,170 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+import { ActivePolicy, GovernanceDecision, Standard } from './types';
+import { PolicyStore } from './policyStore';
+
+const ICON_ENFORCED = '✓';
+const ICON_REDIRECTED = '→';
+const ICON_WARN = '⚠';
+const ICON_BLOCKED = '✗';
+const ICON_ENTERPRISE = '🛡';
+const ICON_INDIVIDUAL = '◉';
+/** Balance ("law") codicon — matches the inline Guardrails picker and status bar badge. Requires theme-icon rendering. */
+const ICON_GUARDRAILS = '$(law)';
+
+function policyIcon(status: ActivePolicy['status']): string {
+	switch (status) {
+		case 'redirected': return ICON_REDIRECTED;
+		case 'warn': return ICON_WARN;
+		default: return ICON_ENFORCED;
+	}
+}
+
+/**
+ * Builds a markdown summary block for governance state to append after an agent response.
+ * Format (plain markdown — isTrusted boolean is not supported in chat participants):
+ *   ---
+ *   🛡 **Guardrails applied** — N redirected, N enforced
+ *   | | Policy | Scope |
+ *   ...
+ *   ◉ **Kept your N coding standards**
+ *   | | Standard |
+ *   ...
+ */
+function buildEnterpriseSummary(policies: readonly ActivePolicy[]): string {
+	if (policies.length === 0) {
+		return '';
+	}
+
+	const redirected = policies.filter(p => p.status === 'redirected').length;
+	const enforced = policies.filter(p => p.status !== 'redirected' && p.status !== 'warn').length;
+
+	const tagParts: string[] = [];
+	if (redirected > 0) {
+		tagParts.push(`${redirected} redirected`);
+	}
+	if (enforced > 0) {
+		tagParts.push(`${enforced} enforced`);
+	}
+
+	const rows = policies.map(p => {
+		const icon = policyIcon(p.status);
+		const scope = p.scope === 'org' ? `org · ${p.id}` : p.scope;
+		return `| ${icon} | ${p.label} | ${scope} |`;
+	}).join('\n');
+
+	const header = `${ICON_ENTERPRISE} **Guardrails applied**${tagParts.length ? ' — ' + tagParts.join(', ') : ''}`;
+
+	return [
+		'\n---',
+		header,
+		'',
+		'| | Policy | Scope |',
+		'|---|---|---|',
+		rows,
+	].join('\n');
+}
+
+/**
+ * Builds a markdown summary block for individual coding standards to append after an agent response.
+ * Format (plain markdown):
+ *   ---
+ *   ◉ **Kept your N coding standards**
+ *   | | Standard |
+ *   ...
+ */
+function buildIndividualSummary(standards: readonly Standard[]): string {
+	const enabled = standards.filter(s => s.enabled);
+	if (enabled.length === 0) {
+		return '';
+	}
+
+	const rows = enabled.map(s => `| ${ICON_ENFORCED} | ${s.label} |`).join('\n');
+
+	const header = `${ICON_INDIVIDUAL} **Kept your ${enabled.length} coding standard${enabled.length !== 1 ? 's' : ''}**`;
+
+	return [
+		'\n---',
+		header,
+		'',
+		'| | Standard |',
+		'|---|---|',
+		rows,
+	].join('\n');
+}
+
+/**
+ * Returns the post-response governance summary as a plain markdown string, or undefined
+ * when governance is inactive or has nothing to report.
+ */
+export function buildGovernanceSummaryMarkdown(store: PolicyStore): string | undefined {
+	const blocks: string[] = [];
+
+	const enterprise = buildEnterpriseSummary(store.activePolicies);
+	if (enterprise) {
+		blocks.push(enterprise);
+	}
+
+	const individual = buildIndividualSummary(store.activeStandards);
+	if (individual) {
+		blocks.push(individual);
+	}
+
+	return blocks.length > 0 ? blocks.join('\n') : undefined;
+}
+
+/** Escapes markdown table-breaking pipe characters in free text. */
+function escapeCell(text: string): string {
+	return text.replace(/\|/g, '\\|');
+}
+
+/**
+ * Builds a truthful per-run governance summary from the enforcement decisions recorded
+ * during a single agent request. Returns undefined when nothing was blocked, flagged, or
+ * tracked.
+ *
+ * Format (markdown with theme icons):
+ *   ---
+ *   $(law) **Governance enforced** — N blocked, N flagged
+ *   | | Policy | Target | Context |
+ *   ...
+ *   Context tracked: `flag1`, `flag2`
+ */
+export function buildRunSummary(decisions: readonly GovernanceDecision[], flags: readonly string[] = []): string | undefined {
+	if (decisions.length === 0 && flags.length === 0) {
+		return undefined;
+	}
+
+	const blocked = decisions.filter(d => d.outcome === 'blocked').length;
+	const flagged = decisions.filter(d => d.outcome === 'confirmed').length;
+
+	const tagParts: string[] = [];
+	if (blocked > 0) {
+		tagParts.push(`${blocked} blocked`);
+	}
+	if (flagged > 0) {
+		tagParts.push(`${flagged} flagged`);
+	}
+
+	const header = `${ICON_GUARDRAILS} **Governance enforced**${tagParts.length ? ' — ' + tagParts.join(', ') : ''}`;
+
+	const parts: string[] = ['\n---', header, ''];
+
+	if (decisions.length > 0) {
+		const rows = decisions.map(d => {
+			const icon = d.outcome === 'blocked' ? ICON_BLOCKED : ICON_WARN;
+			return `| ${icon} | ${escapeCell(d.policyId)} | ${d.ruleTarget} | ${escapeCell(d.context)} |`;
+		}).join('\n');
+		parts.push('| | Policy | Target | Context |', '|---|---|---|---|', rows);
+	}
+
+	if (flags.length > 0) {
+		const flagList = flags.map(f => `\`${escapeCell(f)}\``).join(', ');
+		parts.push('', `Context tracked: ${flagList}`);
+	}
+
+	return parts.join('\n');
+}
