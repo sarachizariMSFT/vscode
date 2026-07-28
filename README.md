@@ -52,7 +52,7 @@ See our [wiki](https://github.com/microsoft/vscode/wiki/Feedback-Channels) for a
 
 ## GitHub Copilot Governance — Shift-Left Standards Enforcement
 
-> **Branch:** `sara/copilot-governance-clean` · **Fork:** [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-clean)
+> **Branch:** `sara/copilot-governance-demo` · **Fork:** [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-demo)
 
 Enforces your org/team coding standards during every Copilot Chat agent run. Before Copilot generates code, governance rules are injected into the system prompt. Structured rules are also enforced **deterministically** at the tool-call level — a denied command, tool, or file write is blocked before it runs. After each response, a compact summary table shows which guardrails were applied and which context was tracked — no popups for the silent (prompt-shaping) path.
 
@@ -83,22 +83,22 @@ Enforces your org/team coding standards during every Copilot Chat agent run. Bef
 Requires building VS Code from source. **Prerequisites:** Node.js 20+, Git, active GitHub Copilot subscription.
 
 ```bash
-# Clone this fork and check out the branch
+# Clone this fork and check out the self-contained demo branch
 git clone https://github.com/sarachizariMSFT/vscode.git
 cd vscode
-git checkout sara/copilot-governance-clean
+git checkout sara/copilot-governance-demo
 
 # Install dependencies (~5 min)
 npm install
 
-# Launch (Windows)
-scripts\code.bat
+# Launch pointed at the bundled demo workspace (Windows)
+scripts\code.bat .\governance-demo
 
 # Launch (macOS/Linux)
-scripts/code.sh
+scripts/code.sh ./governance-demo
 ```
 
-Sign in to GitHub Copilot when prompted, then open any workspace to try it.
+Sign in to GitHub Copilot when prompted, then open the Chat view to try it. See [`governance-demo/README.md`](governance-demo/README.md) for the full step-by-step walkthrough.
 
 ### Quick Test — Enterprise Mode
 
