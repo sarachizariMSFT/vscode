@@ -158,18 +158,23 @@ The run session persists across every tool call in a single agent request, so a 
 
 ## Trying Individual Mode (inferred standards)
 
-1. Make sure there is **no** `.github/copilot-policies.json` in your workspace
-2. Open the workspace — a notification appears: *"Copilot Governance: Set up coding standards…"*
-3. Click **Get Started**
-4. Choose **Existing project** (scans your code) or **New / greenfield** (best-practice defaults)
-5. Approve or adjust the checklist — click a standard to toggle it off
-6. Send any agent request
-7. A `◉ Kept your N coding standards` summary appears at the bottom of the response
+With no `.github/copilot-policies.json` present, recommendations surface **inline** in the
+Guardrails chip — there is no pop-up notification. To try it:
 
-To re-trigger the flow manually at any time:
+1. Make sure there is **no** `.github/copilot-policies.json` in your workspace
+2. Open the workspace, then open Copilot Chat and click the **Guardrails** chip
+3. Recommended standards appear under **From this workspace** (inferred from a scan) and, as you
+   type, under **From your prompt**
+4. Click **＋** on a recommendation (or **Add all**) to activate it
+5. Send any agent request
+6. A `◉ Kept your N coding standards` summary appears at the bottom of the response
+
+Prefer the guided multi-select instead? Run it from the Command Palette:
 ```
 Ctrl+Shift+P → Runtime Governance: Setup Governance Standards
 ```
+This lets you pick project type (existing / greenfield) and approve or trim the inferred standards
+in one pass.
 
 ---
 

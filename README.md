@@ -61,7 +61,7 @@ Enforces your org/team coding standards during every Copilot Chat agent run. Bef
 | Mode | How it activates | Source of rules |
 |---|---|---|
 | **Enterprise** | Drop `.github/copilot-policies.json` in your workspace | Your org's central policy file (local or remote URL) |
-| **Individual** | No policy file present → onboarding notification appears | 5-signal workspace scan (test framework, `.env.example`, `tsconfig.json`, folder structure) |
+| **Individual** | No policy file present → recommendations surface inline in the Guardrails chip | 5-signal workspace scan (test framework, `.env.example`, `tsconfig.json`, folder structure) |
 
 ### What's Included
 
@@ -109,8 +109,9 @@ Sign in to GitHub Copilot when prompted, then open the Chat view to try it. See 
 ### Quick Test — Individual Mode
 
 1. Open a workspace with no `.github/copilot-policies.json`
-2. A notification appears: "Set up Copilot Governance standards?"
-3. Choose **Scan workspace** or **Greenfield** → pick standards → they persist to workspace state
+2. Open Copilot Chat and click the **Guardrails** chip — recommended standards appear under **From this workspace** (no pop-up)
+3. Click **＋** on a recommendation (or **Add all**) to activate it; they persist to workspace state
+4. Prefer a guided multi-select? Run **Runtime Governance: Setup Governance Standards** from the Command Palette
 
 ### Quick Test — Inline Guardrails Picker
 
