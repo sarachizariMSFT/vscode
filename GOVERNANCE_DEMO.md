@@ -201,6 +201,29 @@ Click the badge to open the governance panel where you can toggle individual pol
 
 ---
 
+## Inline Guardrails picker (chat input)
+
+Beyond the status bar badge, governance is controllable directly from the chat composer. A **Guardrails** chip sits in the chat input toolbar so you never have to leave the prompt to adjust standards.
+
+Click the chip to open a dropdown with three groups:
+
+- **Mode** — switch between **Enforce** (block violations) and **Warn only** (allow but flag). Writes `github.copilot.governance.mode`.
+- **Policies** — every active policy from `.github/copilot-policies.json` with an inline on/off switch. Turning one off adds its id to `github.copilot.governance.disabledPolicies` so the engine stops enforcing it; the manifest file is left untouched.
+- **Recommended** — guardrails that aren't active yet, split into **From this workspace** (inferred from a file/folder scan) and **From your prompt** (learned live from what you type in the composer). Each row has a **＋**, plus an **Add all N recommended** shortcut.
+
+**Live learning.** As you type and submit prompts, matching guardrails are surfaced under *From your prompt*. When a new one arrives, the chip shows an **unread dot**. Opening the picker clears the chip dot, but each newly recommended item keeps **its own dot in the menu** until you add it — so you can always tell which entries are new.
+
+**Accepting a recommendation** writes the policy into `.github/copilot-policies.json` (creating the file if needed) and moves it up into the **Policies** group. The picker stays open after toggles and adds so you can make several changes in one pass.
+
+**What to look for:**
+1. Open Copilot Chat — the **Guardrails** chip appears in the input toolbar
+2. In an empty/greenfield workspace, open it before typing — baseline safety guardrails are listed under *Recommended*
+3. Type `deploy infrastructure with Terraform to the cloud` → the chip shows an unread dot
+4. Reopen the picker → *Tag cloud resources* appears under **From your prompt** with a per-item dot
+5. Click **＋** → it moves into **Policies** as an active, enforced guardrail
+
+---
+
 ## File structure
 
 All governance code lives under `extensions/copilot/src/governance/`, split by layer:
@@ -231,12 +254,23 @@ Enforcement is wired into the agent tool-call path in
 `extensions/copilot/src/extension/prompts/node/panel/toolCalling.tsx`, and the per-run summary is
 appended in `extensions/copilot/src/extension/prompt/node/defaultIntentRequestHandler.ts`.
 
+The inline Guardrails picker lives in the core workbench (it reads the manifest and writes the
+bridge settings directly):
+```
+src/vs/workbench/contrib/chat/browser/widget/input/
+  guardrailsPickerActionItem.ts        # Chip + dropdown (mode, policies, recommendations, learn-from-prompt)
+  guardrailsPickerActionItem.css       # Chip + per-item unread dot styling
+```
+It is registered as a chat-input action in
+`src/vs/workbench/contrib/chat/browser/actions/chatExecuteActions.ts` and hosted by
+`src/vs/workbench/contrib/chat/browser/widget/input/chatInputPart.ts`.
+
 ---
 
 ## Known limitations
 
 - Governance applies to agent (chat) requests only — not inline completions
-- Policy authoring UI is not included; edit `.github/copilot-policies.json` directly
+- Full policy authoring (rules, conditions) is not in the UI; the inline picker adds recommended policies and toggles them, but complex rules are edited in `.github/copilot-policies.json` directly
 - The `<details>` collapsible summary is not supported in all VS Code chat versions; falls back to a flat markdown table
 - `warn` rules record and allow — there is no interactive mid-run approval prompt yet (only `deny` hard-blocks)
 - File-content rules match only on write tools that expose their content; reads taint by path only

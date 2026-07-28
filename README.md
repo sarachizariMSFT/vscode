@@ -73,6 +73,8 @@ Enforces your org/team coding standards during every Copilot Chat agent run. Bef
 - **Per-run rate limits** — cap tool calls and edited files per agent run
 - **Post-response summary** — plain markdown table after each agent response, including any tracked context flags
 - **Status bar badge** — `🛡 Guardrails N` (total active policies + standards, unified)
+- **Inline Guardrails picker** — a Guardrails chip in the chat input toolbar to switch mode (Enforce/Warn), toggle individual policies on/off, and accept recommendations without leaving the composer
+- **Live recommendations** — guardrails inferred from a workspace scan and learned from your prompts as you type; new ones are flagged with an unread dot on the chip and a per-item dot in the menu, and accepting one writes it to `.github/copilot-policies.json`
 - **Settings panel** — click the badge to toggle policies on/off or rescan
 - **Settings** — `github.copilot.governance.*` config keys in VS Code settings
 
@@ -109,6 +111,13 @@ Sign in to GitHub Copilot when prompted, then open any workspace to try it.
 1. Open a workspace with no `.github/copilot-policies.json`
 2. A notification appears: "Set up Copilot Governance standards?"
 3. Choose **Scan workspace** or **Greenfield** → pick standards → they persist to workspace state
+
+### Quick Test — Inline Guardrails Picker
+
+1. Open the Copilot Chat input and click the **Guardrails** chip in the toolbar
+2. Switch between **Enforce** and **Warn**, and toggle policies on/off inline
+3. Type a prompt (e.g. "deploy infrastructure with Terraform") — matching guardrails surface under **From your prompt** with an unread dot
+4. Click **＋** on a recommendation (or **Add all**) to write it to `.github/copilot-policies.json`
 
 See [GOVERNANCE_DEMO.md](GOVERNANCE_DEMO.md) for the full walkthrough.
 
