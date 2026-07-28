@@ -52,7 +52,7 @@ See our [wiki](https://github.com/microsoft/vscode/wiki/Feedback-Channels) for a
 
 ## GitHub Copilot Governance — Shift-Left Standards Enforcement
 
-> **Branch:** `sara/copilot-governance-demo` · **Fork:** [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-demo)
+> **Branch:** `sara/copilot-governance-inline` · **Fork:** [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-inline)
 
 Enforces your org/team coding standards during every Copilot Chat agent run. Before Copilot generates code, governance rules are injected into the system prompt. Structured rules are also enforced **deterministically** at the tool-call level — a denied command, tool, or file write is blocked before it runs. After each response, a compact summary table shows which guardrails were applied and which context was tracked — no popups for the silent (prompt-shaping) path.
 
@@ -86,7 +86,7 @@ Requires building VS Code from source. **Prerequisites:** Node.js 20+, Git, acti
 # Clone this fork and check out the self-contained demo branch
 git clone https://github.com/sarachizariMSFT/vscode.git
 cd vscode
-git checkout sara/copilot-governance-demo
+git checkout sara/copilot-governance-inline
 
 # Install dependencies (~5 min)
 npm install

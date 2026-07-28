@@ -1,6 +1,6 @@
 # GitHub Copilot Governance — Demo Guide
 
-> **Branch:** `sara/copilot-governance-clean` on [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-clean)
+> **Branch:** `sara/copilot-governance-inline` on [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-inline)
 > **Feature:** Shift-left standards enforcement built into Copilot Chat
 
 Copilot Governance silently applies your org or personal coding standards during every agent run — no gates, no interruptions. It shapes the output, then explains what it did.
@@ -20,7 +20,7 @@ Copilot Governance silently applies your org or personal coding standards during
 ```bash
 git clone https://github.com/sarachizariMSFT/vscode.git
 cd vscode
-git checkout sara/copilot-governance-clean
+git checkout sara/copilot-governance-inline
 npm install
 ```
 
