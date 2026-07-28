@@ -20,20 +20,19 @@ const STANDARDS_STATE_KEY = 'copilot.governance.inferredStandards';
 const SETUP_COMMAND_ID = 'github.copilot.governance.setupStandards';
 
 /**
- * Drives the individual-mode onboarding flow (Phase 5).
+ * Registers the manual individual-mode setup command.
  *
- * Reacts to `PolicyStore.onNeedsOnboardingChanged`: when the flag is raised,
- * shows an information-message notification. The user can then:
- *   1. Pick project type (existing / greenfield)
- *   2. Approve or trim the inferred/suggested standards in a multi-select Quick Pick
- *   3. Click "Accept" — standards are saved to workspaceState and loaded into the store
- *
- * Also registers `github.copilot.governance.setupStandards` for manual re-trigger.
+ * Recommendations now surface inline through the Guardrails chip in the chat
+ * input (its "From this workspace" and "From your prompt" groups), so there is
+ * no auto-notification and no prompt-driven auto-accept. Developers who want the
+ * guided multi-select can still run `github.copilot.governance.setupStandards`
+ * from the Command Palette, which:
+ *   1. Picks project type (existing / greenfield)
+ *   2. Lets them approve or trim the inferred standards in a multi-select Quick Pick
+ *   3. Saves the accepted standards to workspaceState and loads them into the store
  */
 export class GovernanceOnboardingContribution extends Disposable implements IExtensionContribution {
 	private readonly _policyStore = PolicyStore.getInstance();
-	/** Guard so we only prompt once per session even if the event fires multiple times. */
-	private _prompted = false;
 
 	constructor(
 		@IVSCodeExtensionContext private readonly _extensionContext: IVSCodeExtensionContext,
@@ -43,47 +42,9 @@ export class GovernanceOnboardingContribution extends Disposable implements IExt
 	) {
 		super();
 
-		this._register(this._policyStore.onNeedsOnboardingChanged(needs => {
-			if (needs && !this._prompted) {
-				this._prompted = true;
-				void this._notifyUser();
-			}
-		}));
-
-		// Prompt-driven path: when the developer submits their first chat message and no
-		// standards have been set yet, infer relevant standards from that message.
-		this._register(this._policyStore.onFirstPrompt(prompt => {
-			void this._suggestFromPrompt(prompt);
-		}));
-
 		this._register(vscode.commands.registerCommand(SETUP_COMMAND_ID, () => {
 			void this._runFlow();
 		}));
-	}
-
-	// -----------------------------------------------------------------------
-	// Prompt-driven standard suggestion (triggered by first chat message)
-	// -----------------------------------------------------------------------
-
-	private async _suggestFromPrompt(prompt: string): Promise<void> {
-		this._logService.trace(`[Governance] Inferring standards from first prompt (${prompt.length} chars)`);
-		const standards = InferenceEngine.scanFromPrompt(prompt);
-		await this._acceptFlow(standards);
-	}
-
-	// -----------------------------------------------------------------------
-	// Notification entry point
-	// -----------------------------------------------------------------------
-
-	private async _notifyUser(): Promise<void> {
-		const choice = await vscode.window.showInformationMessage(
-			vscode.l10n.t('Copilot Governance: Set up coding standards Copilot will quietly maintain while you work.'),
-			vscode.l10n.t('Get Started'),
-			vscode.l10n.t('Not Now'),
-		);
-		if (choice === vscode.l10n.t('Get Started')) {
-			await this._runFlow();
-		}
 	}
 
 	// -----------------------------------------------------------------------
