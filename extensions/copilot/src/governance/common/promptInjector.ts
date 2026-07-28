@@ -20,11 +20,19 @@ export function buildEnterpriseBlock(policies: readonly ActivePolicy[], config: 
 		.map(p => `- ${p.id} (${p.scope}, ${p.enforcement}): ${p.label}${p.fix ? `. ${p.fix}` : ''}`)
 		.join('\n');
 
+	// The global mode changes how the restricted step is handled. In 'enforce' the restricted
+	// action is hard-blocked and the compliant alternative is offered for the developer to approve
+	// (never applied silently, never overridden). In 'warn' the model quietly takes the compliant
+	// alternative without pausing.
+	const behavior = config.mode === 'enforce'
+		? 'These policies are enforced. When the developer\u2019s requested approach would violate a policy, you must not carry out the restricted action — and you must not perform it even if the developer insists, since enforcement can only be relaxed by switching the workspace to Warn mode. Complete every part of the task that is already compliant. For the restricted step, stop and present the safest policy-compliant alternative, then ask the developer whether to proceed with it and wait for their explicit approval before carrying it out — do not apply the alternative silently. Never abandon the whole request because one step is restricted; offer the alternative and let the developer decide.'
+		: 'Apply these policies silently during implementation. Do not ask the developer for permission to apply them, and do not refuse or abandon the request because of them. Prefer a compliant alternative over blocking the developer: when their requested approach would violate a policy, do not stop and tell them you cannot proceed. Instead, find the safest policy-compliant way to accomplish their underlying goal, complete every part of the task that can be done in compliance, and carry out that alternative without pausing to ask. Leave undone only the specific step that has no compliant alternative — never abandon the whole request because one step is restricted.';
+
 	const lines = [
 		'<governance>',
-		'The following org and project policies are active for this workspace. Apply them silently during implementation. Do not ask the developer for permission to apply them, and do not refuse or abandon the request because of them.',
+		'The following org and project policies are active for this workspace.',
 		'',
-		'Prefer a compliant alternative over blocking the developer. When their requested approach would violate a policy, do not stop and tell them you cannot proceed. Instead, find the safest policy-compliant way to accomplish their underlying goal, complete every part of the task that can be done in compliance, and carry out that alternative without pausing to ask. Leave undone only the specific step that has no compliant alternative — never abandon the whole request because one step is restricted.',
+		behavior,
 		'',
 		'ACTIVE POLICIES:',
 		policyList,
@@ -37,7 +45,7 @@ export function buildEnterpriseBlock(policies: readonly ActivePolicy[], config: 
 	}
 
 	if (config.includeRationaleInResponses) {
-		lines.push('', 'At the end of the run, after the work is done, add a "Guardrails applied" section that explains — as an after-the-fact summary, not a refusal — which policies applied, the compliant alternative you took in place of each restricted action, and why. Keep it to one concise sentence per policy.');
+		lines.push('', 'At the end of the run, after the work is done, add a "Guardrails applied" section that explains — as an after-the-fact summary, not a refusal — which policies applied, the compliant alternative you took or proposed in place of each restricted action, and why. Keep it to one concise sentence per policy.');
 	}
 
 	lines.push('</governance>');
