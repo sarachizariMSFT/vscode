@@ -103,7 +103,18 @@ Expected: **7 passed**.
 
 ---
 
-## 5. More detail
+## 5. Screenshots
+
+Captured from a signed-in dev build for quick reference:
+
+| | |
+|---|---|
+| **Picker open** — Mode / Policies / Recommended | ![Guardrails picker open](screenshots/02-picker-open.png) |
+| **Live recommendation** — after typing a Terraform prompt, a new "From your prompt" policy appears with an unread dot | ![Live recommendations](screenshots/04-recommendations.png) |
+
+More frames: [`screenshots/`](screenshots/) (`01-chat-open`, `03-prompt-typed`).
+
+## 6. More detail
 
 See the full feature write-up in [`../GOVERNANCE_DEMO.md`](../GOVERNANCE_DEMO.md) and the top-level
 [`../README.md`](../README.md).
