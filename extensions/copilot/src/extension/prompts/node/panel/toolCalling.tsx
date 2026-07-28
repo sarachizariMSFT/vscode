@@ -449,8 +449,8 @@ function governanceBlockMessage(result: EnforcementResult): string {
 			return l10n.t('Blocked by governance: this run reached its maximum number of edited files.');
 		default:
 			return result.policyId
-				? l10n.t('Blocked by governance policy "{0}". This action is not permitted.', result.policyId)
-				: l10n.t('Blocked by governance policy. This action is not permitted.');
+				? l10n.t('Blocked by governance policy "{0}". Do not retry this action. Take a policy-compliant alternative that still advances the user\'s goal, continue with the rest of the task, and explain the alternative in your "Guardrails applied" summary.', result.policyId)
+				: l10n.t('Blocked by governance policy. Do not retry this action. Take a policy-compliant alternative that still advances the user\'s goal, continue with the rest of the task, and explain the alternative in your "Guardrails applied" summary.');
 	}
 }
 
