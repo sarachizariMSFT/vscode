@@ -87,7 +87,7 @@ export function enforceToolCall(
 	}
 
 	for (const evaluation of evaluations) {
-		const result = evaluateContext(evaluation, policies, session.flags);
+		const result = evaluateContext(evaluation, policies, session.flags, config.mode);
 		// Raise any contextual flags first so later evaluations in this call — and
 		// subsequent tool calls in the run — can condition on them.
 		for (const flag of result.flagsToSet) {

@@ -97,6 +97,25 @@ describe('governance contextual enforcement', () => {
 		});
 	});
 
+	it('global warn mode downgrades an enforce policy to warn instead of blocking', () => {
+		// The policy itself is 'enforce', but the org-wide kill-switch (config.mode = 'warn')
+		// turns every hard block into a flag-and-allow.
+		const policies = [secretsThenNoNetworkPolicy('enforce')];
+		const cfg = config({ mode: 'warn' });
+		const session = new GovernanceRunSession();
+
+		enforceToolCall({ toolName: 'read_file', filePath: '/proj/.env' }, policies, cfg, session);
+		const fetchResult = enforceToolCall({ toolName: 'fetch_webpage' }, policies, cfg, session);
+
+		expect({
+			blocked: fetchResult.blocked,
+			decisions: session.decisions.map(d => ({ policyId: d.policyId, outcome: d.outcome })),
+		}).toEqual({
+			blocked: false,
+			decisions: [{ policyId: 'SEC-CTX-1', outcome: 'confirmed' }],
+		});
+	});
+
 	it('applies flags raised earlier in the same tool call to later evaluations', () => {
 		// A single tool call is evaluated in the order tool -> terminal -> file, and a flag raised by
 		// an earlier evaluation gates the later ones. Here the tool match taints the run and the file

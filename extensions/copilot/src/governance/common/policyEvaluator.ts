@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ActivePolicy, GovernanceDecision, PolicyRule, RuleAction, RuleCondition } from './types';
+import { ActivePolicy, GovernanceDecision, GuardrailMode, PolicyRule, RuleAction, RuleCondition } from './types';
 
 export interface EvaluationContext {
 	readonly kind: 'terminal' | 'tool' | 'file';
@@ -36,8 +36,11 @@ const _NO_FLAGS: ReadonlySet<string> = new Set<string>();
  *   - rule.action === 'observe'                                  → allow, only raises flags
  *   - policy.enforcement === 'warn'    (deny/warn rule)          → log and allow
  *   - no matching rule                                           → allow
+ *
+ * The global `globalMode` acts as an org-wide kill-switch: when it is `'warn'`, every policy
+ * is treated as warn-only regardless of its own `enforcement`, so nothing is hard-blocked.
  */
-export function evaluateContext(ctx: EvaluationContext, policies: readonly ActivePolicy[], sessionFlags: ReadonlySet<string> = _NO_FLAGS): EvaluationResult {
+export function evaluateContext(ctx: EvaluationContext, policies: readonly ActivePolicy[], sessionFlags: ReadonlySet<string> = _NO_FLAGS, globalMode: GuardrailMode = 'enforce'): EvaluationResult {
 	const flagsToSet: string[] = [];
 	let actionable: Omit<EvaluationResult, 'flagsToSet'> | undefined;
 
@@ -56,8 +59,8 @@ export function evaluateContext(ctx: EvaluationContext, policies: readonly Activ
 			if (rule.action === 'observe') { continue; }
 
 			if (!actionable) {
-				// In 'warn' policy mode, never hard-block — only report
-				const effectiveAction: RuleAction = policy.enforcement === 'warn' ? 'warn' : rule.action;
+				// In 'warn' mode — either globally or per policy — never hard-block, only report.
+				const effectiveAction: RuleAction = (globalMode === 'warn' || policy.enforcement === 'warn') ? 'warn' : rule.action;
 				actionable = {
 					action: effectiveAction,
 					matchedPolicyId: policy.id,
