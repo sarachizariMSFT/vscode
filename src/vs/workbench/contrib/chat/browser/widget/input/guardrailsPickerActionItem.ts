@@ -4,6 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as dom from '../../../../../../base/browser/dom.js';
+import { CONTEXT_VIEW_MENU_MOTION_CLOSE_ANIMATION_DURATION } from '../../../../../../base/browser/ui/contextview/contextview.js';
 import { renderLabelWithIcons } from '../../../../../../base/browser/ui/iconLabel/iconLabels.js';
 import { VSBuffer } from '../../../../../../base/common/buffer.js';
 import { Codicon } from '../../../../../../base/common/codicons.js';
@@ -665,16 +666,18 @@ export class GuardrailsPickerActionItem extends ChatInputPickerActionViewItem {
 	}
 
 	/**
-	 * Reopens the picker on the next tick. The action widget always closes when a row is
-	 * selected, so toggling a policy or adding a recommendation would otherwise dismiss the
-	 * picker; reopening keeps it in view so several changes can be made in one pass.
+	 * Reopens the picker once the action widget's close animation has finished. The action widget
+	 * always dismisses when a row is selected, so toggling a policy or adding a recommendation would
+	 * otherwise close the picker. Reopening on the next tick races with the in-flight close animation
+	 * and can immediately re-dismiss the reopened widget; waiting for the animation to complete keeps
+	 * the picker reliably in view so several changes can be made in one pass.
 	 */
 	private _reopen(): void {
 		if (!this.element) {
 			return;
 		}
 		const targetWindow = dom.getWindow(this.element);
-		const handle = targetWindow.setTimeout(() => this.show(), 0);
+		const handle = targetWindow.setTimeout(() => this.show(), CONTEXT_VIEW_MENU_MOTION_CLOSE_ANIMATION_DURATION + 16);
 		this._reopenHandle.value = toDisposable(() => targetWindow.clearTimeout(handle));
 	}
 
