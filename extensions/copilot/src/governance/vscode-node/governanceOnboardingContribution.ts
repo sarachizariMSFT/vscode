@@ -177,7 +177,6 @@ export class GovernanceOnboardingContribution extends Disposable implements IExt
 
 		await this._extensionContext.workspaceState.update(STANDARDS_STATE_KEY, accepted);
 		this._policyStore.setStandards(accepted);
-		this._policyStore.setNeedsOnboarding(false);
 
 		const activeCount = accepted.filter(s => s.enabled).length;
 		this._logService.trace(`[Governance] Onboarding complete: ${activeCount}/${accepted.length} standards accepted`);
