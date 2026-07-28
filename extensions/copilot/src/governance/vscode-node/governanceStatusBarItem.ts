@@ -9,12 +9,16 @@ import { ILogService } from '../../platform/log/common/logService';
 import { Disposable } from '../../util/vs/base/common/lifecycle';
 import { IExtensionContribution } from '../../extension/common/contributions';
 import { PolicyStore } from '../common/policyStore';
-import { OPEN_PANEL_COMMAND_ID } from './governanceSidePanel';
+
+/** Command that opens the inline Guardrails picker in the chat input — the single control surface. */
+const OPEN_INLINE_PICKER_COMMAND_ID = 'github.copilot.governance.openInlinePicker';
+
 /**
  * Governance status bar item (Phase 7).
  *
- * Unified mode: `🛡 Guardrails N` where N includes active platform policies
- * and enabled inferred/recommended standards.
+ * Status-only indicator that matches the inline Guardrails chip: `$(law) Guardrails N`
+ * (balance icon in Enforce, warning icon in Warn) where N includes active platform
+ * policies and enabled inferred/recommended standards.
  *
  * Reacts reactively to `PolicyStore.onDidChange` so the badge stays current
  * without polling.  Hidden when governance is disabled or the store is empty.
@@ -39,10 +43,16 @@ export class GovernanceStatusBarItem extends Disposable implements IExtensionCon
 			)
 		);
 
-		// Click opens the full Quick Pick panel — the only surface that stays open
-		// so the user can switch mode and toggle policies in place. The hover tooltip
-		// (below) is a read-only glance at current state.
-		this._statusBarItem.command = OPEN_PANEL_COMMAND_ID;
+		// The badge is a status indicator and discoverable entry point — not a
+		// second management panel. Clicking it opens Copilot Chat and its inline
+		// Guardrails picker, which is the single place to switch mode, toggle
+		// policies, and accept recommendations. The hover tooltip (below) is a
+		// read-only glance at current state.
+		this._register(vscode.commands.registerCommand(OPEN_INLINE_PICKER_COMMAND_ID, async () => {
+			await vscode.commands.executeCommand('workbench.action.chat.open');
+			await vscode.commands.executeCommand('workbench.action.chat.openGuardrailsPicker');
+		}));
+		this._statusBarItem.command = OPEN_INLINE_PICKER_COMMAND_ID;
 
 		// Initial render
 		this._update();
@@ -68,7 +78,13 @@ export class GovernanceStatusBarItem extends Disposable implements IExtensionCon
 		const total = policies.length + standards.length;
 
 		if (total > 0) {
-			this._statusBarItem.text = `🛡 Guardrails ${total}`;
+			// Match the inline Guardrails chip: the balance ("law") icon in Enforce
+			// mode, the warning icon in Warn mode. In Warn mode also tint the badge
+			// so the mode is readable at a glance.
+			const isWarn = (this._configurationService.getConfig(ConfigKey.Governance.Mode) as string) === 'warn';
+			const icon = isWarn ? '$(warning)' : '$(law)';
+			this._statusBarItem.text = `${icon} Guardrails ${total}`;
+			this._statusBarItem.backgroundColor = isWarn ? new vscode.ThemeColor('statusBarItem.warningBackground') : undefined;
 			this._statusBarItem.tooltip = this._buildTooltip();
 			this._statusBarItem.show();
 			this._logService.trace(`[Governance] status bar updated: ${policies.length} policies, ${standards.length} standards`);
@@ -90,7 +106,7 @@ export class GovernanceStatusBarItem extends Disposable implements IExtensionCon
 		const modeLabel = mode === 'enforce' ? 'Enforce' : 'Warn only';
 
 		md.appendMarkdown(`**GitHub Copilot Governance**\n\n`);
-		md.appendMarkdown(`$(shield) Mode: **${modeLabel}**\n\n`);
+		md.appendMarkdown(`$(law) Mode: **${modeLabel}**\n\n`);
 
 		const policies = this._policyStore.allPolicies;
 		if (policies.length > 0) {
@@ -102,7 +118,7 @@ export class GovernanceStatusBarItem extends Disposable implements IExtensionCon
 			}
 		}
 
-		md.appendMarkdown(`---\n\n_Click to manage_`);
+		md.appendMarkdown(`---\n\n_Click to open Guardrails in Copilot Chat_`);
 		return md;
 	}
 }
