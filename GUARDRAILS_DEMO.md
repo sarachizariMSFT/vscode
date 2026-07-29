@@ -1,6 +1,6 @@
 # GitHub Copilot Guardrails — Demo Guide
 
-> **Branch:** `sara/copilot-governance-inline` on [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-inline)
+> **Branch:** `sara/copilot-guardrails-inline` on [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-guardrails-inline)
 > **Feature:** Shift-left standards enforcement built into Copilot Chat
 
 Copilot Governance applies your org or personal coding standards during every agent run. In **Warn** mode it shapes the output silently and explains what it did afterward; in **Enforce** mode it blocks any restricted step and offers a compliant alternative for you to approve before proceeding.
@@ -20,7 +20,7 @@ Copilot Governance applies your org or personal coding standards during every ag
 ```bash
 git clone https://github.com/sarachizariMSFT/vscode.git
 cd vscode
-git checkout sara/copilot-governance-inline
+git checkout sara/copilot-guardrails-inline
 npm install
 ```
 
