@@ -605,11 +605,17 @@ export class GuardrailsPickerActionItem extends ChatInputPickerActionViewItem {
 				}
 			}
 		} else if (this._policies.length > 0) {
-			// Everything recommended is already active — reassure rather than leaving an empty gap.
+			// Everything recommended is already in the manifest. Distinguish "present" from
+			// "enabled": a policy can be added but toggled off, so only claim "active" when none
+			// are disabled — otherwise the reassurance would contradict the toggles above.
+			const disabledCount = this._getDisabledPolicies().filter(id => this._policies.some(p => p.id === id)).length;
+			const allActive = disabledCount === 0;
 			actions.push({
 				id: 'chat.guardrails.allSet',
-				label: localize('guardrails.allSet', "All recommended guardrails are active"),
-				icon: ThemeIcon.fromId(Codicon.check.id),
+				label: allActive
+					? localize('guardrails.allSet', "All recommended guardrails are active")
+					: localize('guardrails.allSetSomeOff', "All recommended guardrails added — {0} turned off", disabledCount),
+				icon: ThemeIcon.fromId(allActive ? Codicon.check.id : Codicon.info.id),
 				category: recommendedCategory,
 				enabled: false,
 				class: undefined,
