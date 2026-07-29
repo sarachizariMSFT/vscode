@@ -69,6 +69,7 @@ export function enforceToolCall(
 	config: GovernanceConfig,
 	session: GovernanceRunSession,
 ): EnforcementResult {
+	session.recordMode(config.mode);
 	if (config.rateLimits.enabled) {
 		if (session.toolCallCount >= config.rateLimits.maxToolCallsPerRun) {
 			return { blocked: true, reason: 'rate-limit-tools' };

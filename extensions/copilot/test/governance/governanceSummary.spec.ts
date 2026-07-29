@@ -42,6 +42,14 @@ describe('buildRunSummary', () => {
 		expect(summary).toContain('1 blocked, 1 flagged');
 	});
 
+	it('labels the header with the active governance mode', () => {
+		const decisions: GovernanceDecision[] = [
+			{ policyId: 'p1', ruleTarget: 'tool', context: 'deleteFile', outcome: 'confirmed' },
+		];
+		expect(buildRunSummary(decisions)).toContain('Guardrails — Enforce mode');
+		expect(buildRunSummary(decisions, [], 'warn')).toContain('Guardrails — Warn mode');
+	});
+
 	it('escapes pipe characters in the context cell', () => {
 		const decisions: GovernanceDecision[] = [
 			{ policyId: 'p1', ruleTarget: 'terminal', context: 'cat a | grep b', outcome: 'blocked' },

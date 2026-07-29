@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { GovernanceDecision } from './types';
+import { GovernanceDecision, GuardrailMode } from './types';
 
 /**
  * Accumulates per-run governance state: tool call count, unique edited files,
@@ -14,6 +14,7 @@ export class GovernanceRunSession {
 	private _editedFiles = new Set<string>();
 	private _decisions: GovernanceDecision[] = [];
 	private _flags = new Set<string>();
+	private _mode: GuardrailMode = 'enforce';
 
 	recordToolCall(): void {
 		this._toolCallCount++;
@@ -25,6 +26,11 @@ export class GovernanceRunSession {
 
 	recordDecision(decision: GovernanceDecision): void {
 		this._decisions.push(decision);
+	}
+
+	/** Records the governance mode in effect for this run, surfaced in the run summary. */
+	recordMode(mode: GuardrailMode): void {
+		this._mode = mode;
 	}
 
 	/** Raises a contextual flag that later rules can condition on via `when`. */
@@ -40,6 +46,7 @@ export class GovernanceRunSession {
 	get editedFileCount(): number { return this._editedFiles.size; }
 	get decisions(): readonly GovernanceDecision[] { return this._decisions; }
 	get flags(): ReadonlySet<string> { return this._flags; }
+	get mode(): GuardrailMode { return this._mode; }
 
 	hasActivity(): boolean {
 		return this._decisions.length > 0 || this._flags.size > 0;
