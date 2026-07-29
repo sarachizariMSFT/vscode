@@ -1,0 +1,26 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Format with Prettier",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "format"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "focus": false
+      }
+    },
+    {
+      "label": "Check Prettier Formatting",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "format:check"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always"
+      }
+    }
+  ]
+}

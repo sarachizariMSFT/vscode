@@ -1,0 +1,26 @@
+{
+  "name": "greenfield-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A signal-rich project with NO governance policy file, used to demo the Guardrails onboarding / standards-inference flow.",
+  "scripts": {
+    "test": "jest",
+    "build": "tsc -p tsconfig.json",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "prettier": "^3.9.6",
+    "typescript": "^5.4.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/__tests__/**/*.test.ts"
+    ]
+  }
+}
