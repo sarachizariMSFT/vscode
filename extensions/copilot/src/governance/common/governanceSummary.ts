@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ActivePolicy, GovernanceDecision, Standard } from './types';
+import { ActivePolicy, GovernanceDecision, GuardrailMode, Standard } from './types';
 import { PolicyStore } from './policyStore';
 
 const ICON_ENFORCED = '✓';
@@ -128,12 +128,12 @@ function escapeCell(text: string): string {
  *
  * Format (markdown with theme icons):
  *   ---
- *   $(law) **Governance enforced** — N blocked, N flagged
+ *   $(law) **Guardrails — Enforce mode** · N blocked, N flagged
  *   | | Policy | Target | Context |
  *   ...
  *   Context tracked: `flag1`, `flag2`
  */
-export function buildRunSummary(decisions: readonly GovernanceDecision[], flags: readonly string[] = []): string | undefined {
+export function buildRunSummary(decisions: readonly GovernanceDecision[], flags: readonly string[] = [], mode: GuardrailMode = 'enforce'): string | undefined {
 	if (decisions.length === 0 && flags.length === 0) {
 		return undefined;
 	}
@@ -149,7 +149,8 @@ export function buildRunSummary(decisions: readonly GovernanceDecision[], flags:
 		tagParts.push(`${flagged} flagged`);
 	}
 
-	const header = `${ICON_GUARDRAILS} **Governance enforced**${tagParts.length ? ' — ' + tagParts.join(', ') : ''}`;
+	const modeLabel = mode === 'warn' ? 'Warn' : 'Enforce';
+	const header = `${ICON_GUARDRAILS} **Guardrails — ${modeLabel} mode**${tagParts.length ? ' · ' + tagParts.join(', ') : ''}`;
 
 	const parts: string[] = ['\n---', header, ''];
 

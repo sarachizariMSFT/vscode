@@ -205,7 +205,7 @@ export class DefaultIntentRequestHandler {
 		if (!session?.hasActivity()) {
 			return;
 		}
-		const summary = buildRunSummary(session.decisions, [...session.flags]);
+		const summary = buildRunSummary(session.decisions, [...session.flags], session.mode);
 		if (summary) {
 			// Render with theme-icon support so the `$(law)` guardrails codicon in the header
 			// matches the inline Guardrails picker and status bar badge.

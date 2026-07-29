@@ -22,7 +22,7 @@ import { FileChangesEvent, IFileService } from '../../../../../../platform/files
 import { IHoverService } from '../../../../../../platform/hover/browser/hover.js';
 import { IKeybindingService } from '../../../../../../platform/keybinding/common/keybinding.js';
 import { ITelemetryService } from '../../../../../../platform/telemetry/common/telemetry.js';
-import { IWorkspaceContextService } from '../../../../../../platform/workspace/common/workspace.js';
+import { IWorkspaceContextService, WorkbenchState } from '../../../../../../platform/workspace/common/workspace.js';
 import { ChatInputPickerActionViewItem, IChatInputPickerOptions } from './chatInputPickerActionItem.js';
 import './guardrailsPickerActionItem.css';
 
@@ -325,9 +325,21 @@ export class GuardrailsPickerActionItem extends ChatInputPickerActionViewItem {
 		return Array.isArray(value) ? value : [];
 	}
 
+	/**
+	 * Chooses the configuration target for governance writes. Prefers workspace scope so the
+	 * selection travels with the project, but falls back to user scope in an empty workbench
+	 * (e.g. the agents window with no folder open) where a workspace write would be silently
+	 * dropped — which previously made a mode switch appear to do nothing.
+	 */
+	private _writeTarget(): ConfigurationTarget {
+		return this.workspaceContextService.getWorkbenchState() === WorkbenchState.EMPTY
+			? ConfigurationTarget.USER
+			: ConfigurationTarget.WORKSPACE;
+	}
+
 	private async _setMode(mode: GovernanceMode): Promise<void> {
 		if (this._getMode() !== mode) {
-			await this.configurationService.updateValue(GOVERNANCE_MODE_KEY, mode, ConfigurationTarget.WORKSPACE);
+			await this.configurationService.updateValue(GOVERNANCE_MODE_KEY, mode, this._writeTarget());
 		}
 	}
 
@@ -338,7 +350,7 @@ export class GuardrailsPickerActionItem extends ChatInputPickerActionViewItem {
 		} else {
 			disabled.add(id);
 		}
-		await this.configurationService.updateValue(GOVERNANCE_DISABLED_POLICIES_KEY, [...disabled], ConfigurationTarget.WORKSPACE);
+		await this.configurationService.updateValue(GOVERNANCE_DISABLED_POLICIES_KEY, [...disabled], this._writeTarget());
 	}
 
 	/**
