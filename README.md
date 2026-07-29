@@ -120,7 +120,7 @@ Sign in to GitHub Copilot when prompted, then open the Chat view to try it. See 
 3. Type a prompt (e.g. "deploy infrastructure with Terraform") — matching guardrails surface under **From your prompt** with an unread dot
 4. Click **＋** on a recommendation (or **Add all**) to write it to `.github/copilot-policies.json`
 
-See [GOVERNANCE_DEMO.md](GOVERNANCE_DEMO.md) for the full walkthrough.
+See [GUARDRAILS_DEMO.md](GUARDRAILS_DEMO.md) for the full walkthrough.
 
 ## Related Projects
 

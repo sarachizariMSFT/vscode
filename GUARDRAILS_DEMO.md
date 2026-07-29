@@ -1,4 +1,4 @@
-# GitHub Copilot Governance — Demo Guide
+# GitHub Copilot Guardrails — Demo Guide
 
 > **Branch:** `sara/copilot-governance-inline` on [sarachizariMSFT/vscode](https://github.com/sarachizariMSFT/vscode/tree/sara/copilot-governance-inline)
 > **Feature:** Shift-left standards enforcement built into Copilot Chat
