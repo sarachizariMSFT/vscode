@@ -240,6 +240,12 @@ export class GuardrailsPickerActionItem extends ChatInputPickerActionViewItem {
 	 * clears on open) so the developer can tell which items are the newly recommended ones.
 	 */
 	private readonly _newRecommendationIds = new Set<string>();
+	/**
+	 * Ids of recommendations the developer has already been shown (the chip's unread dot has
+	 * surfaced them at least once). Lets the dot re-appear only when a genuinely new recommendation
+	 * arrives — from either the workspace scan or a chat prompt — rather than on every reload.
+	 */
+	private readonly _seenRecommendationIds = new Set<string>();
 	private readonly _fileWatcher = this._register(new MutableDisposable<IDisposable>());
 	private readonly _reopenHandle = this._register(new MutableDisposable<IDisposable>());
 	private _currentTooltip: string = '';
@@ -399,6 +405,35 @@ export class GuardrailsPickerActionItem extends ChatInputPickerActionViewItem {
 		}
 
 		this._fileRecommendations = recommendations;
+		this._updateUnseenRecommendations();
+	}
+
+	/** Ids of file- and prompt-based recommendations that are not yet present in the manifest. */
+	private _pendingRecommendationIds(): Set<string> {
+		const manifestIds = new Set(this._policies.map(p => p.id));
+		const pending = new Set<string>();
+		for (const rec of [...this._fileRecommendations, ...this._promptRecommendations]) {
+			if (!manifestIds.has(rec.policy.id)) {
+				pending.add(rec.policy.id);
+			}
+		}
+		return pending;
+	}
+
+	/**
+	 * Recomputes whether the chip should show its unread dot. The dot appears when at least one
+	 * pending recommendation — from the workspace scan or a chat prompt — has not yet been surfaced
+	 * to the developer, and the chip label is refreshed immediately when the state changes.
+	 */
+	private _updateUnseenRecommendations(): void {
+		const pending = this._pendingRecommendationIds();
+		const hasUnseen = [...pending].some(id => !this._seenRecommendationIds.has(id));
+		if (hasUnseen !== this._hasUnseenRecommendations) {
+			this._hasUnseenRecommendations = hasUnseen;
+			if (this.element) {
+				this.renderLabel(this.element);
+			}
+		}
 	}
 
 	/**
@@ -426,14 +461,7 @@ export class GuardrailsPickerActionItem extends ChatInputPickerActionViewItem {
 			return;
 		}
 
-		// Only flag as unseen if at least one recommendation is not already in the manifest.
-		const manifestIds = new Set(this._policies.map(p => p.id));
-		if (this._promptRecommendations.some(rec => !manifestIds.has(rec.policy.id))) {
-			this._hasUnseenRecommendations = true;
-			if (this.element) {
-				this.renderLabel(this.element);
-			}
-		}
+		this._updateUnseenRecommendations();
 	}
 
 	/** Merges the given recommended policies into the workspace manifest, creating it if needed. */
@@ -535,7 +563,11 @@ export class GuardrailsPickerActionItem extends ChatInputPickerActionViewItem {
 		}
 		const allPending = [...pendingFileRecs, ...pendingPromptRecs];
 
-		// Opening the dropdown counts as seeing the recommendations — clear the unread dot.
+		// Opening the dropdown counts as seeing the recommendations — mark every pending
+		// recommendation as seen so the unread dot only returns when a genuinely new one arrives.
+		for (const rec of allPending) {
+			this._seenRecommendationIds.add(rec.policy.id);
+		}
 		if (this._hasUnseenRecommendations) {
 			this._hasUnseenRecommendations = false;
 			queueMicrotask(() => this.refresh());
